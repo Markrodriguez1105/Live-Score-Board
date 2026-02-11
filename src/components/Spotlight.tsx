@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { Candidate } from "../types";
 
+// Helper to generate fallback avatar URL
+const getFallbackAvatarUrl = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=512`;
+
 interface SpotlightProps {
   candidate: Candidate;
   onNext: () => void;
@@ -21,10 +25,26 @@ export const Spotlight: React.FC<SpotlightProps> = ({
   activeCategory,
 }) => {
   const [displayScore, setDisplayScore] = useState(0);
+  // Start with fallback URL, then switch to local image if it loads successfully
+  const [imageUrl, setImageUrl] = useState(
+    getFallbackAvatarUrl(candidate.name),
+  );
   const requestRef = useRef<number | undefined>(undefined);
   const startTimeRef = useRef<number | undefined>(undefined);
   const startValueRef = useRef<number>(0);
   const endValueRef = useRef<number>(candidate.totalPercentage);
+
+  // Check if image exists and use it, otherwise keep fallback
+  useEffect(() => {
+    // Always start with the fallback
+    setImageUrl(getFallbackAvatarUrl(candidate.name));
+
+    // Try to load the local image
+    const img = new Image();
+    img.onload = () => setImageUrl(candidate.photoUrl);
+    // onerror: keep the fallback (already set above)
+    img.src = candidate.photoUrl;
+  }, [candidate.photoUrl, candidate.name]);
 
   // Animate Score
   useEffect(() => {
@@ -69,12 +89,18 @@ export const Spotlight: React.FC<SpotlightProps> = ({
     <div className="spotlight-container relative w-full h-full overflow-hidden bg-black text-white">
       {/* Background Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-in-out scale-105"
-        style={{ backgroundImage: `url("${candidate.photoUrl}")` }}
+        className="absolute inset-0 bg-cover bg-left right-120 bg-no-repeat transition-all duration-500 ease-in-out"
+        style={{
+          backgroundImage: `url("${imageUrl}")`,
+          maskImage:
+            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%)",
+        }}
       />
 
       {/* Gradient Overlay - Adaptive */}
-      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-black/40 to-transparent md:from-transparent md:via-black/40 md:to-black/90" />
+      <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/80 via-black/40 to-transparent md:from-transparent md:via-black/40 md:to-black/90" />
 
       {/* Active Category Banner */}
       {activeCategory && (

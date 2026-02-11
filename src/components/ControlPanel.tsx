@@ -1,5 +1,76 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { Candidate } from "../types";
+
+// Helper to generate fallback avatar URL
+const getFallbackAvatarUrl = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=128`;
+
+// Hook to get image URL with fallback
+const useImageWithFallback = (photoUrl: string, name: string) => {
+  const [imgSrc, setImgSrc] = useState(getFallbackAvatarUrl(name));
+
+  useEffect(() => {
+    setImgSrc(getFallbackAvatarUrl(name));
+    const img = new Image();
+    img.onload = () => setImgSrc(photoUrl);
+    img.src = photoUrl;
+  }, [photoUrl, name]);
+
+  return imgSrc;
+};
+
+// Component for candidate thumbnail with fallback
+const CandidateThumbnail: React.FC<{ photoUrl: string; name: string }> = ({
+  photoUrl,
+  name,
+}) => {
+  const imgSrc = useImageWithFallback(photoUrl, name);
+
+  return (
+    <img
+      src={imgSrc}
+      className="w-10 h-10 rounded-full object-cover bg-gray-700"
+      alt=""
+    />
+  );
+};
+
+// Component for candidate preview with fallback images
+const CandidatePreview: React.FC<{ candidate: Candidate }> = ({
+  candidate,
+}) => {
+  const imgSrc = useImageWithFallback(candidate.photoUrl, candidate.name);
+
+  return (
+    <>
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm"
+        style={{
+          backgroundImage: `url("${imgSrc}")`,
+        }}
+      />
+      <div className="relative z-10 text-center space-y-2 md:space-y-4 p-4">
+        <img
+          title={candidate.name}
+          src={imgSrc}
+          className="w-24 h-24 md:w-48 md:h-48 rounded-full border-4 border-pageant-gold mx-auto object-cover shadow-xl"
+          alt=""
+        />
+        <div>
+          <div className="text-pageant-gold uppercase tracking-widest text-xs md:text-sm font-bold mb-1">
+            {candidate.category || "Candidate"}
+          </div>
+          <h1 className="text-2xl md:text-5xl font-bold truncate px-2">
+            {candidate.name}
+          </h1>
+        </div>
+        <div className="text-lg md:text-xl font-mono opacity-70">
+          Current Score: {(candidate.totalPercentage || 0).toFixed(2)}%
+        </div>
+      </div>
+    </>
+  );
+};
 
 interface ControlPanelProps {
   candidates: Candidate[];
@@ -183,11 +254,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <div className="font-mono text-sm opacity-50 w-6">
                 {c.originalIndex + 1}
               </div>
-              <img
-                src={c.photoUrl}
-                className="w-10 h-10 rounded-full object-cover bg-gray-700"
-                alt=""
-              />
+              <CandidateThumbnail photoUrl={c.photoUrl} name={c.name} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold truncate">{c.name}</div>
                 {c.category && (
@@ -211,33 +278,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         {/* Live Preview (Simulated) */}
         <div className="flex-1 relative flex items-center justify-center bg-gray-900 border-b border-gray-800 m-4 md:m-8 rounded-xl overflow-hidden shadow-2xl border border-gray-700">
           {currentCandidate ? (
-            <>
-              <div
-                className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm"
-                style={{
-                  backgroundImage: `url("${currentCandidate.photoUrl}")`,
-                }}
-              />
-              <div className="relative z-10 text-center space-y-2 md:space-y-4 p-4">
-                <img
-                  title={currentCandidate.name}
-                  src={currentCandidate.photoUrl}
-                  className="w-24 h-24 md:w-48 md:h-48 rounded-full border-4 border-pageant-gold mx-auto object-cover shadow-xl"
-                />
-                <div>
-                  <div className="text-pageant-gold uppercase tracking-widest text-xs md:text-sm font-bold mb-1">
-                    {currentCandidate.category || "Candidate"}
-                  </div>
-                  <h1 className="text-2xl md:text-5xl font-bold truncate px-2">
-                    {currentCandidate.name}
-                  </h1>
-                </div>
-                <div className="text-lg md:text-xl font-mono opacity-70">
-                  Current Score:{" "}
-                  {(currentCandidate.totalPercentage || 0).toFixed(2)}%
-                </div>
-              </div>
-            </>
+            <CandidatePreview candidate={currentCandidate} />
           ) : (
             <div className="text-gray-500">No Candidate Selected</div>
           )}

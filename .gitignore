@@ -25,3 +25,7 @@ dist-ssr
 
 # Environment variables
 .env
+
+#Sensitive files
+src/images/candidates/*
+public/images/candidates/*

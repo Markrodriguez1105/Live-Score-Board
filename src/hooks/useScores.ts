@@ -108,6 +108,19 @@ export function useScores(selectedCategory: string = "") {
           scores: number[];
         }[] = [];
 
+        // Helper function to get local image path for a candidate
+        const getCandidateImageUrl = (candidateName: string): string => {
+          // Extract candidate number from name (e.g., "CANDIDATE 1" -> "1")
+          const match = candidateName.match(/(\d+)/);
+          if (match) {
+            const candidateNumber = match[1];
+            // Use the 'mix' folder by default for local images (from public folder)
+            return `/images/candidates/mix/C${candidateNumber}.jpg`;
+          }
+          // Fallback to UI avatars if no number found
+          return `https://ui-avatars.com/api/?name=${encodeURIComponent(candidateName)}&background=random&color=fff`;
+        };
+
         // Helper to finalize current block
         const finalizeBlock = () => {
           if (currentBlockCandidates.length > 0) {
@@ -117,7 +130,7 @@ export function useScores(selectedCategory: string = "") {
               parsedCandidates.push({
                 name: c.name,
                 category: currentCategory,
-                photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff`,
+                photoUrl: getCandidateImageUrl(c.name),
                 scores: c.scores,
                 totalPercentage: avg,
               });

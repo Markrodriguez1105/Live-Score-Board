@@ -88,8 +88,15 @@ export const Spotlight: React.FC<SpotlightProps> = ({
   return (
     <div className="spotlight-container relative w-full h-full overflow-hidden bg-black text-white">
       {/* Background Image */}
+      {/* Mobile: full image without mask so it doesn't go black */}
       <div
-        className="absolute inset-0 bg-cover bg-left right-120 bg-no-repeat transition-all duration-500 ease-in-out"
+        className="block md:hidden absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-in-out"
+        style={{ backgroundImage: `url("${imageUrl}")` }}
+      />
+
+      {/* Desktop / md+: masked image with gradient fade */}
+      <div
+        className="hidden md:block absolute inset-0 bg-cover bg-left md:right-120 bg-no-repeat transition-all duration-500 ease-in-out"
         style={{
           backgroundImage: `url("${imageUrl}")`,
           maskImage:
@@ -99,8 +106,8 @@ export const Spotlight: React.FC<SpotlightProps> = ({
         }}
       />
 
-      {/* Gradient Overlay - Adaptive */}
-      <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/80 via-black/40 to-transparent md:from-transparent md:via-black/40 md:to-black/90" />
+      {/* Gradient Overlay - Adaptive (hidden on mobile) */}
+      <div className="hidden md:block absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/80 via-black/40 to-transparent md:from-transparent md:via-black/40 md:to-black/90" />
 
       {/* Active Category Banner */}
       {activeCategory && (

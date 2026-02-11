@@ -1,0 +1,155 @@
+import { useState, useEffect, useCallback } from 'react';
+import type { Candidate } from '../types';
+
+const SHEET_ID = import.meta.env.VITE_GOOGLE_SHEET_ID;
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+const RANGE = import.meta.env.VITE_GOOGLE_SHEET_RANGE;
+
+export function useScores() {
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchScores = useCallback(async () => {
+        if (!SHEET_ID || !API_KEY) {
+            const msg = "Missing Configuration: VITE_GOOGLE_SHEET_ID or VITE_GOOGLE_API_KEY in .env file.";
+            setError(msg);
+            setLoading(false);
+            return [];
+        }
+
+        try {
+            // Fetch a larger range to accommodate dynamic sections
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                setError(`API Error: ${response.status} ${response.statusText}`);
+                setLoading(false);
+                return [];
+            }
+
+            const data = await response.json();
+            const rows = data.values;
+
+            if (!rows || rows.length === 0) {
+                if (candidates.length === 0) {
+                    setError("No data found in Sheet.");
+                }
+                setLoading(false);
+                return [];
+            }
+
+            setError(null);
+
+            // --- DYNAMIC PARSING LOGIC ---
+            const parsedCandidates: Candidate[] = [];
+            let currentCategory = "General";
+
+            // Temporary storage for the current block being parsed
+            let currentBlockCandidates: { index: number, name: string, scores: number[] }[] = [];
+
+            // Helper to finalize current block
+            const finalizeBlock = () => {
+                if (currentBlockCandidates.length > 0) {
+                    currentBlockCandidates.forEach(c => {
+                        const total = c.scores.reduce((sum, s) => sum + s, 0);
+                        const avg = c.scores.length > 0 ? total / c.scores.length : 0;
+                        parsedCandidates.push({
+                            name: c.name,
+                            category: currentCategory,
+                            photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff`,
+                            scores: c.scores,
+                            totalPercentage: avg
+                        });
+                    });
+                    currentBlockCandidates = [];
+                }
+            };
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const firstCell = (row[0] || "").toString().trim().toUpperCase();
+
+                // 1. Detect Header Row (Contains "CANDIDATE")
+                const isHeaderRow = row.some((cell: string) => (cell || "").toString().toUpperCase().includes("CANDIDATE"));
+
+                if (isHeaderRow) {
+                    // If we were parsing a previous block, finalize it
+                    finalizeBlock();
+
+                    // Attempt to find Category from previous row(s)
+                    let foundCategory = false;
+                    for (let j = i - 1; j >= 0; j--) {
+                        const prevRowText = (rows[j][0] || "").toString().trim();
+                        if (prevRowText) {
+                            if (!prevRowText.toUpperCase().startsWith("JUDGE")) {
+                                currentCategory = prevRowText;
+                                foundCategory = true;
+                            }
+                            break;
+                        }
+                    }
+                    if (!foundCategory) currentCategory = "General";
+
+                    // Initialize candidates for this block
+                    row.forEach((cell: string, colIndex: number) => {
+                        if ((cell || "").toString().toUpperCase().includes("CANDIDATE")) {
+                            currentBlockCandidates.push({
+                                index: colIndex,
+                                name: cell.trim(), // e.g. "CANDIDATE 1"
+                                scores: []
+                            });
+                        }
+                    });
+                    continue;
+                }
+
+                // 2. Detect Judge Row
+                if (currentBlockCandidates.length > 0) {
+                    if (firstCell && !firstCell.startsWith("JUDGE") && isNaN(parseFloat(firstCell))) {
+                        // Likely next section header, ignored here
+                    }
+
+                    if (firstCell.startsWith("JUDGE")) {
+                        currentBlockCandidates.forEach(cand => {
+                            const cellValue = row[cand.index];
+                            if (cellValue !== undefined && cellValue !== "") {
+                                const val = parseFloat(cellValue);
+                                if (!isNaN(val)) {
+                                    cand.scores.push(val);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Finalize the last block
+            finalizeBlock();
+
+            // Only update if data changed to avoid re-renders (deep comp could be expensive, just check length or basic)
+            // For now just set it.
+            setCandidates(parsedCandidates);
+            setLoading(false);
+            return parsedCandidates;
+
+        } catch (err) {
+            setError(`Network/Fetch Error: ${err instanceof Error ? err.message : String(err)}`);
+            setLoading(false);
+            return [];
+        }
+    }, [candidates.length]);
+
+    useEffect(() => {
+        fetchScores();
+    }, []); // Run once on mount
+
+    const refresh = async () => {
+        setLoading(true);
+        const newCandidates = await fetchScores();
+        return newCandidates;
+    };
+
+    return { candidates, loading, error, refresh };
+}

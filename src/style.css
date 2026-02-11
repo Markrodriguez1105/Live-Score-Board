@@ -1,37 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-  --color-pageant-gold: #FFD700;
-  --color-pageant-purple: #4B0082;
+  --color-pageant-gold: #ffd700;
+  --color-pageant-purple: #4b0082;
   --color-midnight-blue: #191970;
-  --color-silver: #C0C0C0;
+  --color-silver: #c0c0c0;
 }
 
 @layer components {
   .leaderboard-item {
-    transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+    transition:
+      transform 0.5s ease-in-out,
+      opacity 0.5s ease-in-out;
   }
 }
 
 body {
-    background-color: #0f0f1a; /* Dark background */
-    color: #ffffff;
-    font-family: 'Inter', sans-serif;
+  background-color: #0f0f1a; /* Dark background */
+  color: #ffffff;
+  font-family: "Inter", sans-serif;
 }
 
 /* Force full height layout */
-html, body, #app, main {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden; /* Prevent scrolling */
+html,
+body,
+#app,
+main {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 /* Utility: Hide Scrollbar for clean UI */
 .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Animations for scoreboard elements */
+@keyframes fadeInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.judge-card {
+  opacity: 0;
 }

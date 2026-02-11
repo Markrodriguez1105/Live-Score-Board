@@ -84,6 +84,8 @@ interface ControlPanelProps {
   categories: string[];
   selectedCategory: string;
   setCategory: (category: string, candidates?: Candidate[]) => void;
+  showJudgeScores?: boolean;
+  setShowJudgeScores?: (v: boolean) => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -98,6 +100,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   categories,
   selectedCategory,
   setCategory,
+  showJudgeScores,
+  setShowJudgeScores,
 }) => {
   const [selectedFilterCategory, setSelectedFilterCategory] =
     React.useState<string>("All");
@@ -178,6 +182,23 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             >
               {isIdle ? "ON AIR: IDLE" : "SET IDLE"}
             </button>
+
+            {/* Show Judges Toggle */}
+            {typeof showJudgeScores !== "undefined" &&
+              typeof setShowJudgeScores === "function" && (
+                <button
+                  onClick={() => setShowJudgeScores(!showJudgeScores)}
+                  className={`ml-2 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border
+                                ${
+                                  showJudgeScores
+                                    ? "bg-pageant-gold text-black border-pageant-gold"
+                                    : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white"
+                                }
+                            `}
+                >
+                  {showJudgeScores ? "HIDE JUDGES" : "SHOW JUDGES"}
+                </button>
+              )}
           </div>
 
           {/* Category/Sheet Selector */}

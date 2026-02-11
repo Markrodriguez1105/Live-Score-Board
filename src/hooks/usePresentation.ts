@@ -9,6 +9,7 @@ export function usePresentationController(initialIndex: number = 0) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [remoteCandidates, setRemoteCandidates] = useState<Candidate[]>([]);
   const [isIdle, setIsIdle] = useState(false);
+  const [showJudgeScores, setShowJudgeScoresState] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -27,6 +28,7 @@ export function usePresentationController(initialIndex: number = 0) {
         candidates?: Candidate[];
         isIdle?: boolean;
         category?: string;
+        showJudgeScores?: boolean;
       }) => {
         setCurrentIndex(data.currentIndex);
         if (data.candidates && data.candidates.length > 0) {
@@ -37,6 +39,9 @@ export function usePresentationController(initialIndex: number = 0) {
         }
         if (data.category !== undefined) {
           setSelectedCategory(data.category);
+        }
+        if (data.showJudgeScores !== undefined) {
+          setShowJudgeScoresState(data.showJudgeScores);
         }
       },
     );
@@ -49,6 +54,9 @@ export function usePresentationController(initialIndex: number = 0) {
   const setIndex = useCallback(
     (newIndex: number, candidates?: Candidate[]) => {
       setCurrentIndex(newIndex);
+      // Auto-hide judge scores when changing candidate
+      setShowJudgeScoresState(false);
+      socket?.emit("SET_SHOW_JUDGE_SCORES", false);
       if (candidates) {
         setRemoteCandidates(candidates);
         socket?.emit("SET_INDEX", { index: newIndex, candidates });
@@ -81,6 +89,14 @@ export function usePresentationController(initialIndex: number = 0) {
     [socket],
   );
 
+  const setShowJudgeScores = useCallback(
+    (value: boolean) => {
+      setShowJudgeScoresState(value);
+      socket?.emit("SET_SHOW_JUDGE_SCORES", value);
+    },
+    [socket],
+  );
+
   return {
     currentIndex,
     setIndex,
@@ -89,5 +105,7 @@ export function usePresentationController(initialIndex: number = 0) {
     toggleIdle,
     selectedCategory,
     setCategory,
+    showJudgeScores,
+    setShowJudgeScores,
   };
 }

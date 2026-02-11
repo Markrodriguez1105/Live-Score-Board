@@ -23,6 +23,7 @@ let currentIndex = 0; // Server-side state of truth
 let cachedCandidates = []; // Cache candidates so new connections get data
 let isIdle = false; // Idle state
 let currentCategory = ""; // Current category/sheet name (empty = use first available)
+let showJudgeScores = true; // Whether to show individual judges' scores on viewers
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
@@ -33,6 +34,7 @@ io.on("connection", (socket) => {
     candidates: cachedCandidates,
     isIdle,
     category: currentCategory,
+    showJudgeScores,
   });
 
   socket.on("SET_INDEX", (payload) => {
@@ -56,6 +58,7 @@ io.on("connection", (socket) => {
         candidates: cachedCandidates,
         isIdle,
         category: currentCategory,
+        showJudgeScores,
       });
     }
   });
@@ -67,6 +70,7 @@ io.on("connection", (socket) => {
       candidates: cachedCandidates,
       isIdle,
       category: currentCategory,
+      showJudgeScores,
     });
   });
 
@@ -83,8 +87,20 @@ io.on("connection", (socket) => {
         candidates: cachedCandidates,
         isIdle,
         category: currentCategory,
+        showJudgeScores,
       });
     }
+  });
+
+  socket.on("SET_SHOW_JUDGE_SCORES", (payload) => {
+    showJudgeScores = !!payload;
+    io.emit("STATE_UPDATE", {
+      currentIndex,
+      candidates: cachedCandidates,
+      isIdle,
+      category: currentCategory,
+      showJudgeScores,
+    });
   });
 
   socket.on("disconnect", () => {

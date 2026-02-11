@@ -15,6 +15,8 @@ function ScoreboardApp() {
     toggleIdle,
     selectedCategory,
     setCategory,
+    showJudgeScores,
+    setShowJudgeScores,
   } = usePresentationController(0);
 
   // Use selected category for fetching scores
@@ -66,6 +68,7 @@ function ScoreboardApp() {
                   totalCandidates={candidates.length}
                   controlsVisible={false}
                   activeCategory={selectedCategory}
+                  showJudgeScores={showJudgeScores}
                 />
               )}
             </div>
@@ -89,6 +92,8 @@ function ScoreboardApp() {
             categories={categories}
             selectedCategory={selectedCategory}
             setCategory={setCategory}
+            showJudgeScores={showJudgeScores}
+            setShowJudgeScores={setShowJudgeScores}
           />
         }
       />
@@ -109,6 +114,8 @@ function ScoreboardApp() {
             categories={categories}
             selectedCategory={selectedCategory}
             setCategory={setCategory}
+            showJudgeScores={showJudgeScores}
+            setShowJudgeScores={setShowJudgeScores}
           />
         }
       />

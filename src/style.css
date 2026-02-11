@@ -5,6 +5,9 @@
   --color-pageant-purple: #4b0082;
   --color-midnight-blue: #191970;
   --color-silver: #c0c0c0;
+  /* Ethereal theme colors */
+  --color-ethereal: #a8d8ff; /* soft sky blue */
+  --color-ethereal-complement: #ffbfa0; /* warm peach (complement) */
 }
 
 @layer components {
@@ -12,6 +15,113 @@
     transition:
       transform 0.5s ease-in-out,
       opacity 0.5s ease-in-out;
+  }
+
+  /* Ethereal utilities */
+  .text-ethereal {
+    color: var(--color-ethereal) !important;
+  }
+  .text-ethereal-complement {
+    color: var(--color-ethereal-complement) !important;
+  }
+  .bg-ethereal {
+    background-color: var(--color-ethereal) !important;
+  }
+  .bg-ethereal-complement {
+    background-color: var(--color-ethereal-complement) !important;
+  }
+  .border-ethereal {
+    border-color: var(--color-ethereal) !important;
+  }
+  .ethereal-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--color-ethereal) 0%,
+      var(--color-ethereal-complement) 100%
+    );
+  }
+  /* Badge / soft variants */
+  .badge-ethereal {
+    background: linear-gradient(
+      90deg,
+      rgba(168, 216, 255, 0.12),
+      rgba(255, 191, 160, 0.08)
+    );
+    border-radius: 9999px;
+    padding: 0.35rem 0.8rem;
+    backdrop-filter: blur(6px);
+  }
+  .bg-ethereal-soft {
+    background-color: rgba(168, 216, 255, 0.06) !important;
+  }
+  .text-ethereal-strong {
+    color: color-mix(in srgb, var(--color-ethereal) 80%, black 20%) !important;
+  }
+
+  /* Logo badge styles for Idle screen */
+  /* larger, responsive logo badge */
+  .logo-badge-wrapper {
+    width: min(92vw, 86vh);
+    height: min(92vw, 86vh);
+    display: inline-block;
+    position: relative;
+  }
+  .logo-badge {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    overflow: visible;
+    display: grid;
+    place-items: center;
+    position: relative;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  .logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: none;
+  }
+  .logo-badge-glow {
+    background: radial-gradient(
+      circle,
+      rgba(168, 216, 255, 0.18),
+      rgba(255, 191, 160, 0.08)
+    );
+    filter: blur(46px);
+  }
+  .logo-crown {
+    position: absolute;
+    top: -12%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--color-ethereal-complement);
+    opacity: 0.98;
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.45));
+  }
+
+  @media (min-width: 768px) {
+    .logo-badge-wrapper {
+      width: min(94vw, 88vh);
+      height: min(94vw, 88vh);
+    }
+    .logo-image {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .logo-badge-wrapper {
+      width: min(96vw, 92vh);
+      height: min(96vw, 92vh);
+    }
+    .logo-image {
+      width: 100%;
+      height: 100%;
+    }
   }
 }
 

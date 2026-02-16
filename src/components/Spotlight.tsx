@@ -72,7 +72,7 @@ const AnimatedNumber: React.FC<{
         const easedInner = 1 - Math.pow(1 - innerProgress, 3);
         const interp = Math.round(
           randomStartRef.current +
-            easedInner * (randomTargetRef.current - randomStartRef.current),
+          easedInner * (randomTargetRef.current - randomStartRef.current),
         );
         setValue(interp);
         rafRef.current = requestAnimationFrame(start);
@@ -248,7 +248,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
       <div className="hidden md:block absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-black/80 via-black/40 to-transparent md:from-transparent md:via-black/40 md:to-black/90" />
 
       {/* Circular overlay image centered-left (larger) */}
-      <div className="absolute z-30 left-1/2 md:left-[30%] top-1/4 md:top-[50%] -translate-x-1/2 -translate-y-1/2">
+      {/* <div className="absolute z-30 left-1/2 md:left-[30%] top-1/4 md:top-[50%] -translate-x-1/2 -translate-y-1/2">
         <div className="w-28 h-28 md:w-200 md:h-200 rounded-full overflow-hidden border-4 border-white/10 shadow-2xl bg-gray-800">
           <img
             src={imageUrl}
@@ -256,7 +256,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
             className="w-full h-full object-cover object-top"
           />
         </div>
-      </div>
+      </div> */}
 
       {/* Content Container - Bottom on Mobile, Right on Desktop */}
       <div className="absolute inset-x-0 bottom-0 md:inset-y-0 md:right-0 md:left-auto h-2/3 md:h-full md:w-1/2 flex flex-col justify-end md:justify-center items-center px-6 md:px-12 z-10 space-y-4 md:space-y-8 pb-20 md:pb-0">

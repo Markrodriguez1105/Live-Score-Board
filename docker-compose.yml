@@ -3,9 +3,9 @@ services:
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: pageant_db
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
-      - "3307:3306"
+      - "3307:${DB_PORT}"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -23,10 +23,10 @@ services:
       - "3001:3001"
     environment:
       DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      DB_NAME: pageant_db
+      DB_NAME: ${MYSQL_DATABASE}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}

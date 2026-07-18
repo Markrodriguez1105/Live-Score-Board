@@ -18,7 +18,7 @@ async function seed() {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT || "3306"),
     user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "pageant_db",
   });
 
@@ -62,26 +62,34 @@ async function seed() {
 
   // 3. Create criteria for each category
   const criteriaData = [
-    { categoryId: swimwear.id, criteria: [
-      { name: "Poise & Bearing", weight: 40, minScore: 10, maxScore: 20, order: 1 },
-      { name: "Stage Presence", weight: 30, minScore: 10, maxScore: 20, order: 2 },
-      { name: "Audience Impact", weight: 30, minScore: 10, maxScore: 20, order: 3 },
-    ]},
-    { categoryId: eveningGown.id, criteria: [
-      { name: "Elegance", weight: 40, minScore: 10, maxScore: 20, order: 1 },
-      { name: "Overall Appearance", weight: 35, minScore: 10, maxScore: 20, order: 2 },
-      { name: "Confidence", weight: 25, minScore: 10, maxScore: 20, order: 3 },
-    ]},
-    { categoryId: talent.id, criteria: [
-      { name: "Performance Quality", weight: 50, minScore: 10, maxScore: 20, order: 1 },
-      { name: "Creativity", weight: 30, minScore: 10, maxScore: 20, order: 2 },
-      { name: "Entertainment Value", weight: 20, minScore: 10, maxScore: 20, order: 3 },
-    ]},
-    { categoryId: qa.id, criteria: [
-      { name: "Content & Substance", weight: 50, minScore: 10, maxScore: 20, order: 1 },
-      { name: "Communication Skills", weight: 30, minScore: 10, maxScore: 20, order: 2 },
-      { name: "Wit & Spontaneity", weight: 20, minScore: 10, maxScore: 20, order: 3 },
-    ]},
+    {
+      categoryId: swimwear.id, criteria: [
+        { name: "Poise & Bearing", weight: 40, minScore: 10, maxScore: 20, order: 1 },
+        { name: "Stage Presence", weight: 30, minScore: 10, maxScore: 20, order: 2 },
+        { name: "Audience Impact", weight: 30, minScore: 10, maxScore: 20, order: 3 },
+      ]
+    },
+    {
+      categoryId: eveningGown.id, criteria: [
+        { name: "Elegance", weight: 40, minScore: 10, maxScore: 20, order: 1 },
+        { name: "Overall Appearance", weight: 35, minScore: 10, maxScore: 20, order: 2 },
+        { name: "Confidence", weight: 25, minScore: 10, maxScore: 20, order: 3 },
+      ]
+    },
+    {
+      categoryId: talent.id, criteria: [
+        { name: "Performance Quality", weight: 50, minScore: 10, maxScore: 20, order: 1 },
+        { name: "Creativity", weight: 30, minScore: 10, maxScore: 20, order: 2 },
+        { name: "Entertainment Value", weight: 20, minScore: 10, maxScore: 20, order: 3 },
+      ]
+    },
+    {
+      categoryId: qa.id, criteria: [
+        { name: "Content & Substance", weight: 50, minScore: 10, maxScore: 20, order: 1 },
+        { name: "Communication Skills", weight: 30, minScore: 10, maxScore: 20, order: 2 },
+        { name: "Wit & Spontaneity", weight: 20, minScore: 10, maxScore: 20, order: 3 },
+      ]
+    },
   ];
 
   let criteriaCount = 0;

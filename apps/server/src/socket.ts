@@ -42,7 +42,7 @@ export function setupSocketHandlers(io: PageantIO) {
           return;
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as JudgeJwtPayload;
+        const decoded = jwt.verify(token, JWT_SECRET || "") as JudgeJwtPayload;
 
         // Validate score values against criteria rules
         for (const s of payload.scores) {

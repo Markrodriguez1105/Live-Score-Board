@@ -77,7 +77,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
  * Generate a JWT for a judge.
  */
 export function generateJudgeToken(payload: JudgeJwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+  return jwt.sign(payload, JWT_SECRET || "", { expiresIn: "24h" });
 }
 
 /**
@@ -93,7 +93,7 @@ export function requireJudge(req: Request, res: Response, next: NextFunction) {
 
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JudgeJwtPayload;
+    const decoded = jwt.verify(token, JWT_SECRET || "") as JudgeJwtPayload;
     req.judge = decoded;
     next();
   } catch {

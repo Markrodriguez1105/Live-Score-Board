@@ -156,7 +156,7 @@ export function ScoringDashboard() {
                   Candidate
                 </TableHead>
                 {judges.map((j) => (
-                  <TableHead key={j.id} className="text-center min-w-[120px]">
+                  <TableHead key={j.id} className="text-center min-w-30">
                     {j.name}
                   </TableHead>
                 ))}

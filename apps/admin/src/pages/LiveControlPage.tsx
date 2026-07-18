@@ -113,11 +113,10 @@ export function LiveControlPage() {
                   <button
                     key={cat.id}
                     onClick={() => updatePresentation({ activeCategoryId: cat.id })}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${
-                      presentation?.activeCategoryId === cat.id
+                    className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${presentation?.activeCategoryId === cat.id
                         ? "bg-pageant-purple text-white font-bold border-pageant-purple shadow-lg shadow-pageant-purple/10"
                         : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     {cat.name}
                     <span className="text-xs opacity-50 ml-2">{cat.weight}%</span>
@@ -133,16 +132,15 @@ export function LiveControlPage() {
               <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">
                 Select Candidate to Display
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-125 overflow-y-auto">
                 {candidates.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => updatePresentation({ activeCandidateId: c.id, isIdle: false })}
-                    className={`relative p-3 rounded-xl text-center transition-all border ${
-                      presentation?.activeCandidateId === c.id
+                    className={`relative p-3 rounded-xl text-center transition-all border ${presentation?.activeCandidateId === c.id
                         ? "bg-pageant-purple/10 border-pageant-purple/60 shadow-lg"
                         : "bg-white/5 border-white/5 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     <img
                       src={c.photoUrl || getFallback(c.name)}

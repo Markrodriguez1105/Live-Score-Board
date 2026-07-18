@@ -121,7 +121,7 @@ export function CategoriesPage() {
             return (
               <Card key={cat.id}>
                 {/* Category Header */}
-                <div className="px-5 py-4 flex items-center justify-between border-b border-border-subtle bg-white/[0.01]">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-border-subtle bg-white/1">
                   <div>
                     <h3 className="font-bold text-white text-base">{cat.name}</h3>
                     <p className="text-xs text-white/40">Weight: {cat.weight}% of total</p>
@@ -146,7 +146,7 @@ export function CategoriesPage() {
                   ) : (
                     <>
                       {cat.criteria.map((cr) => (
-                        <div key={cr.id} className="px-5 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-colors">
+                        <div key={cr.id} className="px-5 py-3 flex items-center justify-between hover:bg-white/1 transition-colors">
                           <div>
                             <span className="text-sm font-medium text-white">{cr.name}</span>
                             <div className="flex gap-3 mt-0.5 text-xs text-white/30">

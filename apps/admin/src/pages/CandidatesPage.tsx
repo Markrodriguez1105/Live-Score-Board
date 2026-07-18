@@ -99,7 +99,7 @@ export function CandidatesPage() {
                 {/* Info */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-white text-sm truncate max-w-[150px]">{c.name}</h3>
+                    <h3 className="font-bold text-white text-sm truncate max-w-37.5">{c.name}</h3>
                     <p className="text-xs text-white/30">Candidate #{c.candidateNumber}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">

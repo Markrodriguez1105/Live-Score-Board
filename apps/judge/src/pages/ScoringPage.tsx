@@ -221,7 +221,7 @@ export function ScoringPage() {
       {/* Main Grid Layout */}
       <div className="flex-1 max-w-6xl w-full mx-auto flex flex-col md:flex-row overflow-hidden">
         {/* Left Side: Category and Candidates List */}
-        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border-subtle p-4 space-y-4 shrink-0 flex flex-col max-h-[320px] md:max-h-none overflow-y-auto">
+        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border-subtle p-4 space-y-4 shrink-0 flex flex-col max-h-80 md:max-h-none overflow-y-auto">
           {/* Category Selector */}
           <div>
             <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Category</label>
@@ -230,11 +230,10 @@ export function ScoringPage() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategoryId(cat.id)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink-1 ${
-                    selectedCategoryId === cat.id
+                  className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink ${selectedCategoryId === cat.id
                       ? "bg-pageant-purple text-white"
                       : "bg-white/5 text-white/50 hover:bg-white/10"
-                  }`}
+                    }`}
                 >
                   {cat.name} ({cat.weight}%)
                 </button>
@@ -255,11 +254,10 @@ export function ScoringPage() {
                   <button
                     key={c.id}
                     onClick={() => setSelectedCandidateId(c.id)}
-                    className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink-1 min-w-[200px] md:min-w-0 ${
-                      isSelected
+                    className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink min-w-50 md:min-w-0 ${isSelected
                         ? "bg-pageant-gold/15 border-pageant-gold text-white"
                         : "bg-white/5 border-border-subtle hover:bg-white/10 text-white/70"
-                    }`}
+                      }`}
                   >
                     <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -335,11 +333,10 @@ export function ScoringPage() {
                           key={v}
                           type="button"
                           onClick={() => handleScoreChange(c.id, v, c.minScore, c.maxScore)}
-                          className={`flex-1 py-1 rounded text-[10px] font-semibold transition-all ${
-                            scoreValues[c.id] === v
+                          className={`flex-1 py-1 rounded text-[10px] font-semibold transition-all ${scoreValues[c.id] === v
                               ? "bg-pageant-gold text-black"
                               : "bg-surface-elevated text-white/40 hover:text-white"
-                          }`}
+                            }`}
                         >
                           {v}
                         </button>

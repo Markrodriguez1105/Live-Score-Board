@@ -31,7 +31,7 @@ export const CardContent: React.FC<React.PropsWithChildren<React.HTMLAttributes<
 );
 
 export const CardFooter: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>> = ({ className = "", children, ...props }) => (
-  <div className={`p-6 border-t border-border-subtle flex items-center bg-white/[0.01] ${className}`} {...props}>
+  <div className={`p-6 border-t border-border-subtle flex items-center bg-white/1 ${className}`} {...props}>
     {children}
   </div>
 );

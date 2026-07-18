@@ -9,7 +9,7 @@ export const Table: React.FC<React.PropsWithChildren<React.TableHTMLAttributes<H
 );
 
 export const TableHeader: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLTableSectionElement>>> = ({ className = "", children, ...props }) => (
-  <thead className={`border-b border-border-subtle bg-white/[0.02] ${className}`} {...props}>
+  <thead className={`border-b border-border-subtle bg-white/2 ${className}`} {...props}>
     {children}
   </thead>
 );
@@ -21,7 +21,7 @@ export const TableBody: React.FC<React.PropsWithChildren<React.HTMLAttributes<HT
 );
 
 export const TableRow: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLTableRowElement>>> = ({ className = "", children, ...props }) => (
-  <tr className={`transition-colors hover:bg-white/[0.01] ${className}`} {...props}>
+  <tr className={`transition-colors hover:bg-white/1 ${className}`} {...props}>
     {children}
   </tr>
 );

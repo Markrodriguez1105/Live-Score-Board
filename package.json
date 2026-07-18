@@ -1,32 +1,23 @@
 {
-  "name": "live-score-board",
+  "name": "pageant-system",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"vite --host\"",
-    "server": "node server.js",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "concurrently -n server,admin,view,tab,judge -c blue,green,yellow,magenta,cyan \"npm run dev -w apps/server\" \"npm run dev -w apps/admin\" \"npm run dev -w apps/view\" \"npm run dev -w apps/tabulator\" \"npm run dev -w apps/judge\"",
+    "dev:server": "npm run dev -w apps/server",
+    "dev:admin": "npm run dev -w apps/admin",
+    "dev:view": "npm run dev -w apps/view",
+    "dev:tabulator": "npm run dev -w apps/tabulator",
+    "dev:judge": "npm run dev -w apps/judge",
+    "build": "npm run build --workspaces --if-present",
+    "db:seed": "npm run seed -w packages/database"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
-    "typescript": "~5.9.3",
-    "vite": "^7.3.1"
-  },
-  "dependencies": {
     "concurrently": "^9.2.1",
-    "express": "^5.2.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0",
-    "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "typescript": "~5.9.3"
   }
 }

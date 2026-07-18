@@ -1,0 +1,89 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: pageant_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: pageant_db
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PORT: 3001
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+  view:
+    build:
+      context: .
+      dockerfile: apps/view/Dockerfile
+    ports:
+      - "5174:80"
+    restart: unless-stopped
+
+  tabulator:
+    build:
+      context: .
+      dockerfile: apps/tabulator/Dockerfile
+    ports:
+      - "5175:80"
+    restart: unless-stopped
+
+  judge:
+    build:
+      context: .
+      dockerfile: apps/judge/Dockerfile
+    ports:
+      - "5176:80"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - server
+      - admin
+      - view
+      - tabulator
+      - judge
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  uploads:

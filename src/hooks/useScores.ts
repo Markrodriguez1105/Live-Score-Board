@@ -6,9 +6,9 @@ const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 
 // Map local image assets in `src/images/candidates/...` to their Vite-resolved URLs
 // This allows using images placed in `src/` (like `src/images/candidates/male/C1.png`)
-const localImageMap: Record<string, string | { default: string }> = import.meta.glob(
+const localImageMap: Record<string, any> = import.meta.glob(
   "../images/candidates/**/*.{png,jpg,jpeg}",
-  { query: "?url", import: "default", eager: true } as any,
+  { query: "?url", import: "default", eager: true },
 );
 // Fetch all available sheet names (categories) from the spreadsheet
 export async function fetchSheetNames(): Promise<string[]> {

@@ -1,0 +1,140 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import type { Pageant } from "@pageant/types";
+
+const API_BASE = "/api";
+
+export function PageantDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [pageant, setPageant] = useState<Pageant | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ name: "", date: "", venue: "", description: "", status: "" as Pageant["status"] });
+
+  const fetchPageant = async () => {
+    const res = await fetch(`${API_BASE}/pageants/${id}`, { credentials: "include" });
+    const data = await res.json();
+    if (data.success) {
+      setPageant(data.data);
+      setForm({ name: data.data.name, date: data.data.date, venue: data.data.venue, description: data.data.description || "", status: data.data.status });
+    }
+  };
+
+  useEffect(() => { fetchPageant(); }, [id]);
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await fetch(`${API_BASE}/pageants/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(form),
+    });
+    setEditing(false);
+    fetchPageant();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this pageant? This cannot be undone.")) return;
+    await fetch(`${API_BASE}/pageants/${id}`, { method: "DELETE", credentials: "include" });
+    navigate("/dashboard");
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("logo", file);
+    await fetch(`${API_BASE}/pageants/${id}/logo`, { method: "POST", credentials: "include", body: fd });
+    fetchPageant();
+  };
+
+  if (!pageant) return <div className="min-h-screen bg-surface-primary flex items-center justify-center"><div className="h-8 w-8 border-[3px] border-pageant-purple border-t-transparent rounded-full animate-spin" /></div>;
+
+  const navItems = [
+    { label: "Categories & Criteria", path: `/pageants/${id}/categories`, icon: "📋" },
+    { label: "Candidates", path: `/pageants/${id}/candidates`, icon: "👥" },
+    { label: "Judges", path: `/pageants/${id}/judges`, icon: "⚖️" },
+    { label: "Live Control", path: `/pageants/${id}/live`, icon: "🎬" },
+    { label: "Results", path: `/pageants/${id}/results`, icon: "🏆" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-surface-primary">
+      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
+          <button onClick={() => navigate("/dashboard")} className="text-white/40 hover:text-white transition-colors">← Back</button>
+          <h1 className="text-lg font-bold text-white truncate">{pageant.name}</h1>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6 animate-fade-in-up">
+        {/* Pageant Info Card */}
+        <div className="bg-surface-secondary border border-border-subtle rounded-2xl p-6">
+          <div className="flex items-start gap-6">
+            {/* Logo */}
+            <div className="relative group shrink-0">
+              <img src={pageant.logoUrl} alt="Logo" className="w-24 h-24 rounded-2xl object-cover bg-surface-elevated" />
+              <label className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <span className="text-white text-xs font-bold">Change</span>
+                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              </label>
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              {editing ? (
+                <form onSubmit={handleUpdate} className="space-y-3">
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
+                    <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
+                  </div>
+                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Pageant["status"] })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm">
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button type="submit" className="bg-pageant-purple text-white px-4 py-2 rounded-lg text-sm font-semibold">Save</button>
+                    <button type="button" onClick={() => setEditing(false)} className="text-white/40 hover:text-white px-4 py-2 text-sm">Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl font-bold text-white">{pageant.name}</h2>
+                    <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-green-500/20 text-green-400">{pageant.status}</span>
+                  </div>
+                  {pageant.description && <p className="text-sm text-white/40 mb-2">{pageant.description}</p>}
+                  <div className="flex gap-4 text-xs text-white/30">
+                    <span>📅 {pageant.date}</span>
+                    <span>📍 {pageant.venue}</span>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => setEditing(true)} className="text-xs bg-surface-elevated hover:bg-white/10 text-white px-3 py-1.5 rounded-lg transition-colors">Edit</button>
+                    <button onClick={handleDelete} className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="bg-surface-secondary border border-border-subtle rounded-2xl p-5 hover:border-pageant-purple/30 hover:shadow-lg transition-all group"
+            >
+              <div className="text-3xl mb-3">{item.icon}</div>
+              <h3 className="font-bold text-white group-hover:text-pageant-gold transition-colors">{item.label}</h3>
+            </Link>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,17 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY tsconfig.base.json ./
+COPY packages/types/ packages/types/
+COPY packages/ui/ packages/ui/
+COPY apps/admin/ apps/admin/
+
+RUN npm install --workspaces --include-workspace-root
+RUN npm run build -w apps/admin
+
+FROM nginx:alpine
+COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html/admin
+COPY apps/admin/default.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

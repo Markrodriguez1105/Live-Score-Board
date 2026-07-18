@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import { useToast } from "@pageant/ui";
+import { useToast, Button, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@pageant/ui";
 import type { Pageant, Candidate, Judge, CategoryWithCriteria } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -122,7 +122,7 @@ export function ScoringDashboard() {
             <select
               value={selectedPageant}
               onChange={(e) => setSelectedPageant(e.target.value)}
-              className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm"
+              className="bg-surface-primary border border-border-default rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pageant-purple transition-all"
             >
               {pageants.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -136,71 +136,68 @@ export function ScoringDashboard() {
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6">
           {categories.map((cat) => (
-            <button
+            <Button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? "bg-pageant-gold text-black"
-                  : "bg-surface-secondary text-white/50 hover:text-white border border-border-subtle"
-              }`}
+              variant={selectedCategory === cat.id ? "gold" : "outline"}
+              className="whitespace-nowrap"
             >
               {cat.name} ({cat.weight}%)
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Scoring Matrix */}
         {currentCategory && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-border-subtle">
-                  <th className="text-left px-4 py-3 text-xs text-white/40 uppercase tracking-wider font-semibold sticky left-0 bg-surface-primary z-10">
-                    Candidate
-                  </th>
-                  {judges.map((j) => (
-                    <th key={j.id} className="text-center px-4 py-3 text-xs text-white/40 uppercase tracking-wider font-semibold min-w-[100px]">
-                      {j.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((c) => (
-                  <tr key={c.id} className="border-b border-border-subtle hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 sticky left-0 bg-surface-primary z-10">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/30 font-mono w-6">#{c.candidateNumber}</span>
-                        <span className="text-sm font-medium text-white">{c.name}</span>
-                      </div>
-                    </td>
-                    {judges.map((j) => {
-                      const submitted = submissionStatus[c.id]?.[j.id] || false;
-                      return (
-                        <td key={j.id} className="text-center px-4 py-3">
-                          {submitted ? (
-                            <button
-                              onClick={() => {
-                                if (currentCategory.criteria.length > 0) {
-                                  handleOverride(j.id, c.id, currentCategory.criteria[0].id);
-                                }
-                              }}
-                              className="inline-flex items-center gap-1 text-green-400 text-sm font-semibold hover:text-green-300 transition-colors"
-                            >
-                              ✓ Scored
-                            </button>
-                          ) : (
-                            <span className="text-white/20 text-sm">⏳ Pending</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-surface-secondary/90 backdrop-blur z-10">
+                  Candidate
+                </TableHead>
+                {judges.map((j) => (
+                  <TableHead key={j.id} className="text-center min-w-[120px]">
+                    {j.name}
+                  </TableHead>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {candidates.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="sticky left-0 bg-surface-secondary/90 backdrop-blur z-10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/30 font-mono w-6">#{c.candidateNumber}</span>
+                      <span className="text-sm font-semibold text-white">{c.name}</span>
+                    </div>
+                  </TableCell>
+                  {judges.map((j) => {
+                    const submitted = submissionStatus[c.id]?.[j.id] || false;
+                    return (
+                      <TableCell key={j.id} className="text-center">
+                        {submitted ? (
+                          <button
+                            onClick={() => {
+                              if (currentCategory.criteria.length > 0) {
+                                handleOverride(j.id, c.id, currentCategory.criteria[0].id);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 text-emerald-400 text-sm font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg hover:bg-emerald-500/25 transition-all cursor-pointer"
+                          >
+                            ✓ Scored
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-white/20 text-sm bg-white/5 border border-white/5 px-3 py-1 rounded-lg font-medium">
+                            ⏳ Pending
+                          </span>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         {candidates.length === 0 && (

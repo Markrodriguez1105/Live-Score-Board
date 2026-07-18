@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Modal } from "@pageant/ui";
+import { Modal, Button, Input, Card } from "@pageant/ui";
 import type { Judge } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -10,6 +10,7 @@ export function JudgesPage() {
   const navigate = useNavigate();
   const [judges, setJudges] = useState<Judge[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [editJudgeData, setEditJudgeData] = useState<Judge | null>(null);
   const [form, setForm] = useState({ name: "", pin: "" });
   const [showPins, setShowPins] = useState(false);
 
@@ -32,6 +33,24 @@ export function JudgesPage() {
       setShowCreate(false);
       setForm({ name: "", pin: "" });
       fetchJudges();
+    } else {
+      alert(data.error || "Failed to create judge");
+    }
+  };
+
+  const updateJudge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editJudgeData) return;
+    const res = await fetch(`${API_BASE}/judges/${editJudgeData.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+      body: JSON.stringify({ name: editJudgeData.name, pin: editJudgeData.pin }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setEditJudgeData(null);
+      fetchJudges();
+    } else {
+      alert(data.error || "Failed to update judge");
     }
   };
 
@@ -46,6 +65,12 @@ export function JudgesPage() {
     setForm({ ...form, pin });
   };
 
+  const generatePinForEdit = () => {
+    if (!editJudgeData) return;
+    const pin = String(Math.floor(1000 + Math.random() * 9000));
+    setEditJudgeData({ ...editJudgeData, pin });
+  };
+
   return (
     <div className="min-h-screen bg-surface-primary">
       <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
@@ -56,12 +81,12 @@ export function JudgesPage() {
             <span className="text-xs text-white/30">{judges.length} total</span>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowPins(!showPins)} className="bg-surface-elevated hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+            <Button onClick={() => setShowPins(!showPins)} variant="secondary">
               {showPins ? "Hide PINs" : "Show PINs"}
-            </button>
-            <button onClick={() => { generatePin(); setShowCreate(true); }} className="bg-pageant-purple hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+            </Button>
+            <Button onClick={() => { generatePin(); setShowCreate(true); }} variant="primary">
               + Add Judge
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -75,9 +100,9 @@ export function JudgesPage() {
         ) : (
           <div className="space-y-3">
             {judges.map((j, i) => (
-              <div key={j.id} className="bg-surface-secondary border border-border-subtle rounded-xl p-4 flex items-center justify-between hover:border-pageant-purple/20 transition-colors">
+              <Card key={j.id} className="p-4 flex items-center justify-between hover:border-pageant-purple/20 transition-colors">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-pageant-purple/20 rounded-full flex items-center justify-center text-pageant-purple font-bold text-sm">
+                  <div className="w-10 h-10 bg-pageant-purple/10 text-pageant-purple rounded-full flex items-center justify-center font-bold text-sm">
                     {i + 1}
                   </div>
                   <div>
@@ -92,23 +117,30 @@ export function JudgesPage() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => deleteJudge(j.id)} className="text-white/20 hover:text-red-400 transition-colors p-2">✕</button>
-              </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => setEditJudgeData(j)}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => deleteJudge(j.id)} className="px-3">
+                    Delete
+                  </Button>
+                </div>
+              </Card>
             ))}
           </div>
         )}
 
-        {/* Print-friendly PIN cards */}
+        {/* PIN cards */}
         {judges.length > 0 && showPins && (
-          <div className="mt-8 bg-surface-secondary border border-border-subtle rounded-xl p-6">
+          <div className="mt-8 bg-surface-secondary border border-border-subtle rounded-2xl p-6">
             <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-4">PIN Cards (for printing)</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {judges.map((j) => (
-                <div key={j.id} className="bg-white text-black rounded-lg p-4 text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Judge</p>
-                  <p className="font-bold text-lg">{j.name}</p>
-                  <p className="text-3xl font-mono font-bold tracking-[0.3em] mt-2 text-indigo-600">{j.pin}</p>
-                  <p className="text-[10px] text-gray-400 mt-2">Enter this PIN to access scoring</p>
+                <div key={j.id} className="bg-white text-black rounded-xl p-5 text-center shadow-lg">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">Scoring Portal PIN</p>
+                  <p className="font-extrabold text-base mt-0.5 text-gray-800">{j.name}</p>
+                  <p className="text-3xl font-mono font-black tracking-[0.25em] mt-3 text-indigo-600 bg-indigo-50/50 py-1.5 rounded-lg border border-indigo-100">{j.pin}</p>
+                  <p className="text-[9px] text-gray-400 mt-3 font-medium">Use this passcode to sign in</p>
                 </div>
               ))}
             </div>
@@ -116,23 +148,65 @@ export function JudgesPage() {
         )}
       </main>
 
+      {/* Add Judge Modal */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Add Judge">
         <form onSubmit={createJudge} className="space-y-4">
+          <Input
+            label="Name *"
+            placeholder="e.g. Judge Alpha"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
           <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Name *</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pageant-purple" placeholder="e.g. Judge Alpha" required />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">PIN *</label>
+            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">PIN *</label>
             <div className="flex gap-2">
-              <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="flex-1 bg-surface-primary border border-border-default rounded-xl px-4 py-2.5 text-white text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-pageant-purple" placeholder="1234" required />
-              <button type="button" onClick={generatePin} className="bg-surface-elevated hover:bg-white/10 text-white px-4 py-2.5 rounded-xl text-sm transition-colors">
+              <Input
+                value={form.pin}
+                onChange={(e) => setForm({ ...form, pin: e.target.value })}
+                className="font-mono tracking-wider"
+                placeholder="1234"
+                required
+              />
+              <Button type="button" variant="secondary" onClick={generatePin} className="shrink-0">
                 🎲 Random
-              </button>
+              </Button>
             </div>
           </div>
-          <button type="submit" className="w-full bg-pageant-purple hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all">Add Judge</button>
+          <Button type="submit" variant="primary" className="w-full py-3">Add Judge</Button>
         </form>
+      </Modal>
+
+      {/* Edit Judge Modal */}
+      <Modal isOpen={!!editJudgeData} onClose={() => setEditJudgeData(null)} title="Edit Judge">
+        {editJudgeData && (
+          <form onSubmit={updateJudge} className="space-y-4">
+            <Input
+              label="Name *"
+              value={editJudgeData.name}
+              onChange={(e) => setEditJudgeData({ ...editJudgeData, name: e.target.value })}
+              required
+            />
+            <div>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">PIN *</label>
+              <div className="flex gap-2">
+                <Input
+                  value={editJudgeData.pin}
+                  onChange={(e) => setEditJudgeData({ ...editJudgeData, pin: e.target.value })}
+                  className="font-mono tracking-wider"
+                  required
+                />
+                <Button type="button" variant="secondary" onClick={generatePinForEdit} className="shrink-0">
+                  🎲 Random
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-4">
+              <Button type="button" variant="ghost" onClick={() => setEditJudgeData(null)}>Cancel</Button>
+              <Button type="submit" variant="primary">Save Changes</Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

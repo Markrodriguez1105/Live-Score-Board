@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { useToast } from "@pageant/ui";
+import { useToast, Button, Card } from "@pageant/ui";
 import type { PresentationState, Candidate, Criteria, CategoryWithCriteria } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -287,7 +287,7 @@ export function ScoringPage() {
           {selectedCandidate ? (
             <div className="max-w-md mx-auto space-y-6">
               {/* Candidate Card Summary */}
-              <div className="bg-surface-secondary border border-border-subtle rounded-2xl p-5 flex items-center gap-4">
+              <Card className="p-5 flex items-center gap-4">
                 <img src={selectedCandidate.photoUrl || getFallback(selectedCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-pageant-purple/30" />
                 <div>
                   <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export function ScoringPage() {
                     <p className="text-xs text-pageant-gold font-bold mt-1 uppercase tracking-wider">{currentCategory.name}</p>
                   )}
                 </div>
-              </div>
+              </Card>
 
               {/* Sliders */}
               <div className="space-y-4">
@@ -350,13 +350,16 @@ export function ScoringPage() {
               </div>
 
               {/* Submit / Update Button */}
-              <button
+              <Button
                 onClick={handleSubmit}
                 disabled={submitting || criteriaList.length === 0}
-                className="w-full bg-pageant-gold hover:bg-amber-400 disabled:opacity-30 text-black font-bold py-4 rounded-xl transition-all text-base active:scale-[0.98] shadow-lg shadow-pageant-gold/20"
+                variant="gold"
+                size="lg"
+                loading={submitting}
+                className="w-full py-4 text-base"
               >
-                {submitting ? "Submitting..." : submitted ? "Update Scores" : "Submit Scores"}
-              </button>
+                {submitted ? "Update Scores" : "Submit Scores"}
+              </Button>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-white/30 text-sm">

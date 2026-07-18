@@ -99,6 +99,33 @@ judgeRoutes.post(
   }
 );
 
+// Update judge
+judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
+  try {
+    const { name, pin } = req.body;
+
+    if (pin) {
+      const existing = await JudgeQueries.getByPin(pin);
+      if (existing && existing.id !== req.params.id) {
+        res.status(409).json({
+          success: false,
+          error: "A judge with this PIN already exists",
+        });
+        return;
+      }
+    }
+
+    const judge = await JudgeQueries.update(req.params.id, { name, pin });
+    if (!judge) {
+      res.status(404).json({ success: false, error: "Judge not found" });
+      return;
+    }
+    res.json({ success: true, data: judge });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
+});
+
 // Delete judge
 judgeRoutes.delete("/judges/:id", requireAdmin, async (req, res) => {
   try {

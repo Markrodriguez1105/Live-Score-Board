@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
+import { Button, Card, CardContent } from "@pageant/ui";
 import type { Candidate, Category, PresentationState } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -42,7 +43,6 @@ export function LiveControlPage() {
       method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
       body: JSON.stringify(updates),
     });
-    // Also broadcast via socket
     socket?.emit("admin:set-presentation", { ...updates, pageantId: id });
   };
 
@@ -78,116 +78,110 @@ export function LiveControlPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6 animate-fade-in-up">
         {/* Control Bar */}
-        <div className="bg-surface-secondary border border-border-subtle rounded-2xl p-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
+        <Card>
+          <CardContent className="p-5 flex flex-wrap items-center gap-3">
+            <Button
               onClick={() => updatePresentation({ isIdle: !presentation?.isIdle })}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                presentation?.isIdle
-                  ? "bg-green-600 hover:bg-green-500 text-white"
-                  : "bg-amber-600 hover:bg-amber-500 text-white"
-              }`}
+              variant={presentation?.isIdle ? "primary" : "secondary"}
             >
               {presentation?.isIdle ? "▶ Go Live" : "⏸ Set Idle"}
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={() => updatePresentation({ showScores: !presentation?.showScores })}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all border ${
-                presentation?.showScores
-                  ? "bg-pageant-gold text-black border-pageant-gold"
-                  : "bg-transparent border-white/20 text-white/60 hover:text-white hover:border-white/40"
-              }`}
+              variant={presentation?.showScores ? "gold" : "outline"}
             >
               {presentation?.showScores ? "🙈 Hide Scores" : "👁 Reveal Scores"}
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={() => updatePresentation({ showJudgeBreakdown: !presentation?.showJudgeBreakdown })}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all border ${
-                presentation?.showJudgeBreakdown
-                  ? "bg-pageant-purple text-white border-pageant-purple"
-                  : "bg-transparent border-white/20 text-white/60 hover:text-white hover:border-white/40"
-              }`}
+              variant={presentation?.showJudgeBreakdown ? "primary" : "outline"}
             >
               {presentation?.showJudgeBreakdown ? "Hide Judge Details" : "Show Judge Details"}
-            </button>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Category Selector */}
-          <div className="bg-surface-secondary border border-border-subtle rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3">Active Category</h3>
-            <div className="space-y-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => updatePresentation({ activeCategoryId: cat.id })}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${
-                    presentation?.activeCategoryId === cat.id
-                      ? "bg-pageant-purple text-white font-bold"
-                      : "bg-white/5 text-white/60 hover:bg-white/10"
-                  }`}
-                >
-                  {cat.name}
-                  <span className="text-xs opacity-50 ml-2">{cat.weight}%</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Active Category</h3>
+              <div className="space-y-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => updatePresentation({ activeCategoryId: cat.id })}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${
+                      presentation?.activeCategoryId === cat.id
+                        ? "bg-pageant-purple text-white font-bold border-pageant-purple shadow-lg shadow-pageant-purple/10"
+                        : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    {cat.name}
+                    <span className="text-xs opacity-50 ml-2">{cat.weight}%</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Candidate Selector */}
-          <div className="lg:col-span-2 bg-surface-secondary border border-border-subtle rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3">
-              Select Candidate to Display
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto">
-              {candidates.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => updatePresentation({ activeCandidateId: c.id, isIdle: false })}
-                  className={`relative p-3 rounded-xl text-center transition-all ${
-                    presentation?.activeCandidateId === c.id
-                      ? "bg-pageant-purple/20 border-2 border-pageant-purple shadow-lg"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10"
-                  }`}
-                >
-                  <img
-                    src={c.photoUrl || getFallback(c.name)}
-                    alt={c.name}
-                    className="w-14 h-14 rounded-full object-cover mx-auto mb-2 ring-2 ring-white/10"
-                  />
-                  <p className="text-xs font-semibold text-white truncate">{c.name}</p>
-                  <p className="text-[10px] text-white/30">#{c.candidateNumber}</p>
-                  {presentation?.activeCandidateId === c.id && (
-                    <div className="absolute top-1.5 right-1.5 w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Card className="lg:col-span-2">
+            <CardContent className="p-5">
+              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">
+                Select Candidate to Display
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto">
+                {candidates.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => updatePresentation({ activeCandidateId: c.id, isIdle: false })}
+                    className={`relative p-3 rounded-xl text-center transition-all border ${
+                      presentation?.activeCandidateId === c.id
+                        ? "bg-pageant-purple/10 border-pageant-purple/60 shadow-lg"
+                        : "bg-white/5 border-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    <img
+                      src={c.photoUrl || getFallback(c.name)}
+                      alt={c.name}
+                      className="w-14 h-14 rounded-full object-cover mx-auto mb-2 ring-2 ring-white/10"
+                    />
+                    <p className="text-xs font-semibold text-white truncate">{c.name}</p>
+                    <p className="text-[10px] text-white/30">#{c.candidateNumber}</p>
+                    {presentation?.activeCandidateId === c.id && (
+                      <div className="absolute top-1.5 right-1.5 w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Current State Preview */}
         {activeCandidate && (
-          <div className="bg-surface-secondary border border-pageant-purple/20 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3">Currently Displaying</h3>
-            <div className="flex items-center gap-4">
-              <img src={activeCandidate.photoUrl || getFallback(activeCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-pageant-gold" />
-              <div>
-                <h2 className="text-xl font-bold text-white">{activeCandidate.name}</h2>
-                <p className="text-sm text-white/40">
-                  Candidate #{activeCandidate.candidateNumber}
-                  {activeCategory && <span> · {activeCategory.name}</span>}
-                </p>
+          <Card className="border-pageant-purple/20">
+            <CardContent className="p-6">
+              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Currently Displaying</h3>
+              <div className="flex items-center gap-4">
+                <img src={activeCandidate.photoUrl || getFallback(activeCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-pageant-gold" />
+                <div>
+                  <h2 className="text-xl font-bold text-white">{activeCandidate.name}</h2>
+                  <p className="text-sm text-white/40">
+                    Candidate #{activeCandidate.candidateNumber}
+                    {activeCategory && <span> · {activeCategory.name}</span>}
+                  </p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-green-400 text-sm font-bold uppercase tracking-wider">Live</span>
+                </div>
               </div>
-              <div className="ml-auto flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-green-400 text-sm font-bold uppercase tracking-wider">Live</span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </main>
     </div>

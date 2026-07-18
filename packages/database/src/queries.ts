@@ -348,6 +348,26 @@ export const JudgeQueries = {
     const result = await execute("DELETE FROM judges WHERE id = ?", [id]);
     return result.affectedRows > 0;
   },
+
+  async update(id: string, data: Partial<CreateJudge>): Promise<Judge | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.name !== undefined) {
+      fields.push("name = ?");
+      values.push(data.name);
+    }
+    if (data.pin !== undefined) {
+      fields.push("pin = ?");
+      values.push(data.pin);
+    }
+    if (fields.length === 0) return JudgeQueries.getById(id);
+    values.push(id);
+    await execute(
+      `UPDATE judges SET ${fields.join(", ")} WHERE id = ?`,
+      values
+    );
+    return JudgeQueries.getById(id);
+  },
 };
 
 // ============================================================

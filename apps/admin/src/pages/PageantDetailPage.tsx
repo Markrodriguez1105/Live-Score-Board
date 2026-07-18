@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from "@pageant/ui";
 import type { Pageant } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -70,56 +71,37 @@ export function PageantDetailPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6 animate-fade-in-up">
         {/* Pageant Info Card */}
-        <div className="bg-surface-secondary border border-border-subtle rounded-2xl p-6">
-          <div className="flex items-start gap-6">
-            {/* Logo */}
-            <div className="relative group shrink-0">
-              <img src={pageant.logoUrl} alt="Logo" className="w-24 h-24 rounded-2xl object-cover bg-surface-elevated" />
-              <label className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                <span className="text-white text-xs font-bold">Change</span>
-                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-              </label>
-            </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-6">
+              {/* Logo */}
+              <div className="relative group shrink-0">
+                <img src={pageant.logoUrl} alt="Logo" className="w-24 h-24 rounded-2xl object-cover bg-surface-elevated" />
+                <label className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <span className="text-white text-xs font-bold">Change</span>
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </label>
+              </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              {editing ? (
-                <form onSubmit={handleUpdate} className="space-y-3">
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
-                    <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm" />
-                  </div>
-                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Pageant["status"] })} className="bg-surface-primary border border-border-default rounded-lg px-3 py-2 text-white text-sm">
-                    <option value="draft">Draft</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <button type="submit" className="bg-pageant-purple text-white px-4 py-2 rounded-lg text-sm font-semibold">Save</button>
-                    <button type="button" onClick={() => setEditing(false)} className="text-white/40 hover:text-white px-4 py-2 text-sm">Cancel</button>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-xl font-bold text-white">{pageant.name}</h2>
-                    <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-green-500/20 text-green-400">{pageant.status}</span>
-                  </div>
-                  {pageant.description && <p className="text-sm text-white/40 mb-2">{pageant.description}</p>}
-                  <div className="flex gap-4 text-xs text-white/30">
-                    <span>📅 {pageant.date}</span>
-                    <span>📍 {pageant.venue}</span>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => setEditing(true)} className="text-xs bg-surface-elevated hover:bg-white/10 text-white px-3 py-1.5 rounded-lg transition-colors">Edit</button>
-                    <button onClick={handleDelete} className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
-                  </div>
-                </>
-              )}
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-xl font-bold text-white">{pageant.name}</h2>
+                  <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{pageant.status}</span>
+                </div>
+                {pageant.description && <p className="text-sm text-white/40 mb-2">{pageant.description}</p>}
+                <div className="flex gap-4 text-xs text-white/30">
+                  <span>📅 {pageant.date}</span>
+                  <span>📍 {pageant.venue}</span>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit Details</Button>
+                  <Button variant="danger" size="sm" onClick={handleDelete}>Delete</Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,6 +117,58 @@ export function PageantDetailPage() {
           ))}
         </div>
       </main>
+
+      {/* Edit Modal */}
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit Pageant Details">
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <Input
+            label="Name *"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="date"
+              label="Date *"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              required
+            />
+            <Input
+              label="Venue *"
+              value={form.venue}
+              onChange={(e) => setForm({ ...form, venue: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Status</label>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value as Pageant["status"] })}
+              className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 transition-all"
+            >
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
+              className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
+            />
+          </div>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button type="submit" variant="primary">Save Changes</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

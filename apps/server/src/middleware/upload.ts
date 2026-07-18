@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Uploads directory — shared Docker volume or local path
-const uploadsDir = path.resolve(__dirname, "../../../uploads");
+const uploadsDir = path.resolve(__dirname, "../../../../uploads");
 
 // Ensure the uploads directory exists
 if (!fs.existsSync(uploadsDir)) {
@@ -47,6 +47,6 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max
+    fileSize: 50 * 1024 * 1024, // 50MB max
   },
 });

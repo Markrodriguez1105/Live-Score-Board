@@ -58,7 +58,7 @@ app.use(
 );
 
 // Serve uploaded files
-const uploadsPath = path.resolve(__dirname, "../../uploads");
+const uploadsPath = path.resolve(__dirname, "../../../uploads");
 app.use("/uploads", express.static(uploadsPath));
 
 // ── API Routes ───────────────────────────────────────────────
@@ -94,7 +94,7 @@ async function start() {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT || "3306"),
     user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "pageant_db",
   });
 

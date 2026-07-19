@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus, Calendar, MapPin, Sparkles } from "lucide-react";
 import type { Pageant } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@pageant/ui/components/card";
@@ -54,19 +55,19 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-primary">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Logo size={40} />
-            <h1 className="text-xl font-bold text-white">Pageant Admin</h1>
+            <h1 className="text-xl font-bold text-foreground">Pageant Admin</h1>
           </div>
           <Button
             id="create-pageant-btn"
             onClick={() => setShowCreate(true)}
           >
-            + New Pageant
+            <Plus className="w-4 h-4 mr-1.5" /> New Pageant
           </Button>
         </div>
       </header>
@@ -78,15 +79,15 @@ export function DashboardPage() {
             <div className="h-8 w-8 border-[3px] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : pageants.length === 0 ? (
-          <div className="text-center py-20 animate-fade-in-up">
-            <div className="text-6xl mb-4">🎭</div>
-            <h2 className="text-xl font-bold text-white mb-2">No Pageants Yet</h2>
-            <p className="text-white/40 mb-6">Create your first pageant to get started</p>
+          <div className="text-center py-20">
+            <Sparkles className="w-16 h-16 text-primary/40 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">No Pageants Yet</h2>
+            <p className="text-muted-foreground mb-6">Create your first pageant to get started</p>
             <Button
               onClick={() => setShowCreate(true)}
               size="lg"
             >
-              Create Pageant
+              <Plus className="w-4 h-4 mr-1.5" /> Create Pageant
             </Button>
           </div>
         ) : (
@@ -95,7 +96,7 @@ export function DashboardPage() {
               <Card
                 key={p.id}
                 onClick={() => navigate(`/pageants/${p.id}`)}
-                className="cursor-pointer transition-all group animate-fade-in-up"
+                className="cursor-pointer transition-all group"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -111,9 +112,9 @@ export function DashboardPage() {
                   )}
                 </CardHeader>
                 <CardContent className="py-4">
-                  <div className="flex items-center gap-4 text-xs text-white/30">
-                    <span>📅 {p.date}</span>
-                    <span>📍 {p.venue}</span>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> {p.date}</span>
+                    <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-muted-foreground" /> {p.venue}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -169,7 +170,7 @@ export function DashboardPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={2}
-                className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 resize-none transition-all"
               />
             </div>
             <Button type="submit" className="w-full py-3 mt-2">

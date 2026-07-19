@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  --color-pageant-gold: #ffd700;
   --color-pageant-purple: #4b0082;
   --color-midnight-blue: #191970;
   --color-silver: #c0c0c0;

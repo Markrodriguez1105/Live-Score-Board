@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Users, Plus, Trash2 } from "lucide-react";
 import type { Candidate } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -64,38 +65,40 @@ export function CandidatesPage() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=256&bold=true`;
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
-            <h1 className="text-lg font-bold text-white">Candidates</h1>
-            <span className="text-xs text-white/30">{candidates.length} total</span>
+            <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <h1 className="text-lg font-bold text-foreground">Candidates</h1>
+            <span className="text-xs text-muted-foreground">{candidates.length} total</span>
           </div>
           <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setShowCreate(true); }} >
-            + Add Candidate
+            <Plus className="w-4 h-4 mr-1.5" /> Add Candidate
           </Button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 animate-fade-in-up">
+      <main className="max-w-5xl mx-auto px-6 py-8">
         {candidates.length === 0 ? (
-          <div className="text-center py-16 text-white/30">
-            <div className="text-5xl mb-4">👥</div>
+          <div className="text-center py-16 text-muted-foreground">
+            <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p>No candidates yet. Add your first candidate.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {candidates.map((c) => (
-              <Card key={c.id} className="p-4 group hover:border-pageant-purple/30 transition-all flex flex-col justify-between">
+              <Card key={c.id} className="p-4 group hover:border-primary/30 transition-all flex flex-col justify-between">
                 {/* Photo */}
                 <div className="relative mb-3">
-                  <img src={c.photoUrl || getFallback(c.name)} alt={c.name} className="w-full aspect-square object-cover rounded-xl bg-surface-elevated" />
+                  <img src={c.photoUrl || getFallback(c.name)} alt={c.name} className="w-full aspect-square object-cover rounded-xl bg-secondary" />
                   <label className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <span className="text-white text-xs font-bold bg-pageant-purple px-3 py-1.5 rounded-lg shadow-lg">Upload Photo</span>
+                    <span className="text-primary-foreground text-xs font-bold bg-primary px-3 py-1.5 rounded-lg shadow-lg">Upload Photo</span>
                     <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadPhoto(c.id, e.target.files[0])} className="hidden" />
                   </label>
-                  <div className="absolute top-2 left-2 w-8 h-8 bg-pageant-purple rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                  <div className="absolute top-2 left-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg">
                     {c.candidateNumber}
                   </div>
                 </div>
@@ -103,15 +106,15 @@ export function CandidatesPage() {
                 {/* Info */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-white text-sm truncate max-w-37.5">{c.name}</h3>
-                    <p className="text-xs text-white/30">Candidate #{c.candidateNumber}</p>
+                    <h3 className="font-bold text-foreground text-sm truncate max-w-37.5">{c.name}</h3>
+                    <p className="text-xs text-muted-foreground">Candidate #{c.candidateNumber}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => setEditCandidateData(c)} className="text-xs py-1 px-2.5">
                       Edit
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => deleteCandidate(c.id)} className="text-xs py-1 px-2.5">
-                      ✕
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>

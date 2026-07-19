@@ -43,7 +43,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
-      <div className="w-80 animate-fade-in-up">
+      <div className="w-80">
         {/* Header */}
         <div className="flex flex-col justify-center items-center mb-8 gap-4">
           <Logo size={40} />

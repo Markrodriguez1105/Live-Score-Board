@@ -53,11 +53,11 @@ const CandidatePreview: React.FC<{ candidate: Candidate }> = ({
         <img
           title={candidate.name}
           src={imgSrc}
-          className="w-24 h-24 md:w-48 md:h-48 rounded-full border-4 border-pageant-gold mx-auto object-cover shadow-xl"
+          className="w-24 h-24 md:w-48 md:h-48 rounded-full border-4 border-primary mx-auto object-cover shadow-xl"
           alt=""
         />
         <div>
-          <div className="text-pageant-gold uppercase tracking-widest text-xs md:text-sm font-bold mb-1">
+          <div className="text-primary uppercase tracking-widest text-xs md:text-sm font-bold mb-1">
             {candidate.category || "Candidate"}
           </div>
           <h1 className="text-2xl md:text-5xl font-bold truncate px-2">
@@ -167,17 +167,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       <div className="w-full md:w-1/3 border-t md:border-t-0 md:border-r border-gray-800 flex flex-col h-1/2 md:h-full bg-gray-900">
         <div className="p-4 border-b border-gray-800 bg-gray-900 sticky top-0 z-10 space-y-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-pageant-gold">Candidates</h2>
+            <h2 className="text-xl font-bold text-primary">Candidates</h2>
 
             {/* Idle Toggle */}
             <button
               onClick={() => toggleIdle(!isIdle)}
               className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border
-                                ${
-                                  isIdle
-                                    ? "bg-red-600 border-red-600 text-white animate-pulse"
-                                    : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white"
-                                }
+                                ${isIdle
+                  ? "bg-red-600 border-red-600 text-white animate-pulse"
+                  : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white"
+                }
                             `}
             >
               {isIdle ? "ON AIR: IDLE" : "SET IDLE"}
@@ -189,11 +188,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <button
                   onClick={() => setShowJudgeScores(!showJudgeScores)}
                   className={`ml-2 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors border
-                                ${
-                                  showJudgeScores
-                                    ? "bg-pageant-gold text-black border-pageant-gold"
-                                    : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white"
-                                }
+                                ${showJudgeScores
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white"
+                    }
                             `}
                 >
                   {showJudgeScores ? "HIDE JUDGES" : "SHOW JUDGES"}
@@ -210,7 +208,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               title="Select Category"
               value={selectedCategory}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pageant-gold focus:border-transparent cursor-pointer hover:bg-gray-700 transition-colors"
+              className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer hover:bg-gray-700 transition-colors"
             >
               {categories.length === 0 ? (
                 <option value="Sheet1">Sheet1</option>
@@ -228,7 +226,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <span>
               {filteredCandidates.length} / {candidates.length} Shown
             </span>
-            <span className="text-pageant-gold font-semibold">
+            <span className="text-primary font-semibold">
               {selectedCategory}
             </span>
           </div>
@@ -240,11 +238,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 key={cat}
                 onClick={() => setSelectedFilterCategory(cat)}
                 className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors
-                                    ${
-                                      selectedFilterCategory === cat
-                                        ? "bg-pageant-gold text-black"
-                                        : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                                    }
+                                    ${selectedFilterCategory === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                  }
                                 `}
               >
                 {cat}
@@ -269,7 +266,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               id={`candidate-row-${c.originalIndex}`}
               onClick={() => handleCandidateClick(c.originalIndex)}
               className={`p-4 border-b border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors flex items-center space-x-3 active:bg-gray-700
-                                ${currentIndex === c.originalIndex ? "bg-pageant-purple text-white border-l-4 border-l-pageant-gold" : "text-gray-300"}
+                                ${currentIndex === c.originalIndex ? "bg-primary text-white border-l-4 border-l-primary" : "text-gray-300"}
                             `}
             >
               <div className="font-mono text-sm opacity-50 w-6">
@@ -285,7 +282,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 )}
               </div>
               {currentIndex === c.originalIndex && (
-                <div className="text-xs bg-pageant-gold text-black px-2 py-1 rounded font-bold">
+                <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded font-bold">
                   LIVE
                 </div>
               )}
@@ -297,7 +294,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Main Control Area - Top on Mobile, Right on Desktop */}
       <div className="flex-1 flex flex-col h-1/2 md:h-full overflow-hidden bg-black relative">
         {/* Live Preview (Simulated) */}
-        <div className="flex-1 relative flex items-center justify-center bg-gray-900 border-b border-gray-800 m-4 md:m-8 rounded-xl overflow-hidden shadow-2xl border border-gray-700">
+        <div className="flex-1 relative flex items-center justify-center bg-gray-900 border-b border-gray-700 m-4 md:m-8 rounded-xl overflow-hidden shadow-2xl border">
           {currentCandidate ? (
             <CandidatePreview candidate={currentCandidate} />
           ) : (
@@ -328,7 +325,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </button>
 
           <div className="text-center hidden md:block">
-            <div className="text-pageant-gold font-bold text-sm">
+            <div className="text-primary font-bold text-sm">
               CONTROLLER
             </div>
           </div>
@@ -338,7 +335,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               setIndex(Math.min(candidates.length - 1, currentIndex + 1))
             }
             disabled={currentIndex >= candidates.length - 1}
-            className="bg-pageant-purple hover:bg-indigo-600 disabled:opacity-50 text-white px-4 md:px-6 py-3 rounded-lg font-bold flex items-center space-x-2 transition-transform active:scale-95 shadow-lg border border-white/10 touch-manipulation flex-1 md:flex-none justify-center ml-2 md:ml-0"
+            className="bg-primary hover:bg-indigo-600 disabled:opacity-50 text-white px-4 md:px-6 py-3 rounded-lg font-bold flex items-center space-x-2 transition-transform active:scale-95 shadow-lg border border-white/10 touch-manipulation flex-1 md:flex-none justify-center ml-2 md:ml-0"
           >
             <span>NEXT</span>
             <svg

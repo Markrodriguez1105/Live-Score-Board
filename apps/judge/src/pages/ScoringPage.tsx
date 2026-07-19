@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
+import { Crown, Footprints, Check, Clock } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { toast } from "sonner";
@@ -200,40 +201,40 @@ export function ScoringPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-primary flex items-center justify-center">
-        <div className="h-8 w-8 border-[3px] border-pageant-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="h-8 w-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-primary flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">👑</span>
-            <span className="font-bold text-white text-sm">Judge Portal</span>
+            <Crown className="w-5 h-5 text-primary" />
+            <span className="font-bold text-foreground text-sm">Judge Portal</span>
           </div>
-          <span className="text-xs text-pageant-gold font-semibold">{judgeInfo?.name}</span>
+          <span className="text-xs text-primary font-semibold">{judgeInfo?.name}</span>
         </div>
       </header>
 
       {/* Main Grid Layout */}
       <div className="flex-1 max-w-6xl w-full mx-auto flex flex-col md:flex-row overflow-hidden">
         {/* Left Side: Category and Candidates List */}
-        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border-subtle p-4 space-y-4 shrink-0 flex flex-col max-h-80 md:max-h-none overflow-y-auto">
+        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border p-4 space-y-4 shrink-0 flex flex-col max-h-80 md:max-h-none overflow-y-auto">
           {/* Category Selector */}
           <div>
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Category</label>
+            <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Category</label>
             <div className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink ${selectedCategoryId === cat.id
-                    ? "bg-pageant-purple text-white"
-                    : "bg-white/5 text-white/50 hover:bg-white/10"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
                     }`}
                 >
                   {cat.name} ({cat.weight}%)
@@ -244,7 +245,7 @@ export function ScoringPage() {
 
           {/* Candidates List */}
           <div className="flex-1 flex flex-col min-h-0">
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Candidates</label>
+            <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Candidates</label>
             <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 pr-1">
               {candidates.map((c) => {
                 const isWalking = presentation?.activeCandidateId === c.id;
@@ -256,8 +257,8 @@ export function ScoringPage() {
                     key={c.id}
                     onClick={() => setSelectedCandidateId(c.id)}
                     className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink min-w-50 md:min-w-0 ${isSelected
-                      ? "bg-pageant-gold/15 border-pageant-gold text-white"
-                      : "bg-white/5 border-border-subtle hover:bg-white/10 text-white/70"
+                      ? "bg-primary/15 border-primary text-foreground"
+                      : "bg-muted/50 border-border hover:bg-muted text-muted-foreground"
                       }`}
                   >
                     <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
@@ -265,12 +266,18 @@ export function ScoringPage() {
                       <p className="text-xs font-bold truncate">#{c.candidateNumber} {c.name}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {isWalking && (
-                          <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded animate-pulse">🚶 ON STAGE</span>
+                          <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded animate-pulse flex items-center">
+                            <Footprints className="w-3 h-3 inline mr-0.5" /> ON STAGE
+                          </span>
                         )}
                         {isScored ? (
-                          <span className="text-[9px] bg-blue-500/20 text-blue-400 font-bold px-1.5 py-0.5 rounded">✓ SCORED</span>
+                          <span className="text-[9px] bg-blue-500/20 text-blue-400 font-bold px-1.5 py-0.5 rounded flex items-center">
+                            <Check className="w-3 h-3 inline mr-0.5" /> SCORED
+                          </span>
                         ) : (
-                          <span className="text-[9px] bg-white/5 text-white/30 font-bold px-1.5 py-0.5 rounded">⏳ PENDING</span>
+                          <span className="text-[9px] bg-muted text-muted-foreground font-bold px-1.5 py-0.5 rounded flex items-center">
+                            <Clock className="w-3 h-3 inline mr-0.5" /> PENDING
+                          </span>
                         )}
                       </div>
                     </div>
@@ -287,17 +294,17 @@ export function ScoringPage() {
             <div className="max-w-md mx-auto space-y-6">
               {/* Candidate Card Summary */}
               <Card className="p-5 flex items-center gap-4">
-                <img src={selectedCandidate.photoUrl || getFallback(selectedCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-pageant-purple/30" />
+                <img src={selectedCandidate.photoUrl || getFallback(selectedCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-primary/30" />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-white">{selectedCandidate.name}</h2>
+                    <h2 className="text-lg font-bold text-foreground">{selectedCandidate.name}</h2>
                     {presentation?.activeCandidateId === selectedCandidate.id && (
                       <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded animate-pulse">ON STAGE</span>
                     )}
                   </div>
-                  <p className="text-xs text-white/40">Candidate #{selectedCandidate.candidateNumber}</p>
+                  <p className="text-xs text-muted-foreground">Candidate #{selectedCandidate.candidateNumber}</p>
                   {currentCategory && (
-                    <p className="text-xs text-pageant-gold font-bold mt-1 uppercase tracking-wider">{currentCategory.name}</p>
+                    <p className="text-xs text-primary font-bold mt-1 uppercase tracking-wider">{currentCategory.name}</p>
                   )}
                 </div>
               </Card>
@@ -305,15 +312,15 @@ export function ScoringPage() {
               {/* Sliders */}
               <div className="space-y-4">
                 {criteriaList.map((c) => (
-                  <div key={c.id} className="bg-surface-secondary border border-border-subtle rounded-xl p-4">
+                  <div key={c.id} className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="text-xs font-semibold text-white">{c.name}</h3>
-                        <p className="text-[10px] text-white/30">
+                        <h3 className="text-xs font-semibold text-foreground">{c.name}</h3>
+                        <p className="text-[10px] text-muted-foreground">
                           Weight: {c.weight}% · Range: {c.minScore}–{c.maxScore}
                         </p>
                       </div>
-                      <div className="text-xl font-bold font-mono text-pageant-gold w-16 text-center">
+                      <div className="text-xl font-bold font-mono text-primary w-16 text-center">
                         {scoreValues[c.id] ?? c.minScore}
                       </div>
                     </div>
@@ -325,7 +332,7 @@ export function ScoringPage() {
                       step={1}
                       value={scoreValues[c.id] ?? c.minScore}
                       onChange={(e) => handleScoreChange(c.id, Number(e.target.value), c.minScore, c.maxScore)}
-                      className="w-full h-2 bg-surface-elevated rounded-full appearance-none cursor-pointer accent-pageant-gold"
+                      className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
                     />
 
                     <div className="flex justify-between mt-2 gap-1">
@@ -335,8 +342,8 @@ export function ScoringPage() {
                           type="button"
                           onClick={() => handleScoreChange(c.id, v, c.minScore, c.maxScore)}
                           className={`flex-1 py-1 rounded text-[10px] font-semibold transition-all ${scoreValues[c.id] === v
-                            ? "bg-pageant-gold text-black"
-                            : "bg-surface-elevated text-white/40 hover:text-white"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground hover:text-foreground"
                             }`}
                         >
                           {v}

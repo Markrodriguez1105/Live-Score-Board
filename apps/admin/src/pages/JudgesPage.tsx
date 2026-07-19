@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Scale, Plus, Dices, Eye, EyeOff } from "lucide-react";
 import type { Judge } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -76,47 +77,57 @@ export function JudgesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
-            <h1 className="text-lg font-bold text-white">Judges</h1>
-            <span className="text-xs text-white/30">{judges.length} total</span>
+            <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <h1 className="text-lg font-bold text-foreground">Judges</h1>
+            <span className="text-xs text-muted-foreground">{judges.length} total</span>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setShowPins(!showPins)} variant="secondary">
-              {showPins ? "Hide PINs" : "Show PINs"}
+              {showPins ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-1.5 inline" /> Hide PINs
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-1.5 inline" /> Show PINs
+                </>
+              )}
             </Button>
             <Button onClick={() => { generatePin(); setShowCreate(true); }}>
-              + Add Judge
+              <Plus className="w-4 h-4 mr-1.5" /> Add Judge
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 animate-fade-in-up">
+      <main className="max-w-5xl mx-auto px-6 py-8">
         {judges.length === 0 ? (
-          <div className="text-center py-16 text-white/30">
-            <div className="text-5xl mb-4">⚖️</div>
+          <div className="text-center py-16 text-muted-foreground">
+            <Scale className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p>No judges yet. Add judges and assign PINs.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {judges.map((j, i) => (
-              <Card key={j.id} className="p-4 flex items-center justify-between hover:border-pageant-purple/20 transition-colors">
+              <Card key={j.id} className="p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-pageant-purple/10 text-pageant-purple rounded-full flex items-center justify-center font-bold text-sm">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-sm">
                     {i + 1}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{j.name}</h3>
+                    <h3 className="font-semibold text-foreground">{j.name}</h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-white/30">PIN:</span>
+                      <span className="text-xs text-muted-foreground">PIN:</span>
                       {showPins ? (
-                        <span className="text-sm font-mono font-bold text-pageant-gold tracking-wider">{j.pin}</span>
+                        <span className="text-sm font-mono font-bold tracking-wider">{j.pin}</span>
                       ) : (
-                        <span className="text-sm text-white/20">••••</span>
+                        <span className="text-sm text-muted-foreground/50">••••</span>
                       )}
                     </div>
                   </div>
@@ -136,8 +147,8 @@ export function JudgesPage() {
 
         {/* PIN cards */}
         {judges.length > 0 && showPins && (
-          <div className="mt-8 bg-surface-secondary border border-border-subtle rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-4">PIN Cards (for printing)</h3>
+          <div className="mt-8 bg-card border border-border rounded-2xl p-6">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">PIN Cards (for printing)</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {judges.map((j) => (
                 <div key={j.id} className="bg-white text-black rounded-xl p-5 text-center shadow-lg">
@@ -180,8 +191,8 @@ export function JudgesPage() {
                   placeholder="1234"
                   required
                 />
-                <Button type="button" variant="secondary" onClick={generatePin} className="shrink-0">
-                  🎲 Random
+                <Button type="button" variant="secondary" onClick={generatePin} className="shrink-0 flex items-center">
+                  <Dices className="w-4 h-4 mr-1.5 inline" /> Random
                 </Button>
               </div>
             </div>
@@ -217,8 +228,8 @@ export function JudgesPage() {
                     className="font-mono tracking-wider"
                     required
                   />
-                  <Button type="button" variant="secondary" onClick={generatePinForEdit} className="shrink-0">
-                    🎲 Random
+                  <Button type="button" variant="secondary" onClick={generatePinForEdit} className="shrink-0 flex items-center">
+                    <Dices className="w-4 h-4 mr-1.5 inline" /> Random
                   </Button>
                 </div>
               </div>

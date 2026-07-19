@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Trophy, BarChart3 } from "lucide-react";
 
 const API_BASE = "/api";
 
@@ -35,7 +36,7 @@ export function ResultsPage() {
     })();
   }, [id]);
 
-  if (!data) return <div className="min-h-screen bg-surface-primary flex items-center justify-center"><div className="h-8 w-8 border-[3px] border-pageant-purple border-t-transparent rounded-full animate-spin" /></div>;
+  if (!data) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="h-8 w-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   // Compute totals per candidate
   const candidateTotals = data.candidates.map((c) => {
@@ -60,31 +61,35 @@ export function ResultsPage() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=128`;
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
-          <h1 className="text-lg font-bold text-white">🏆 Results & Rankings</h1>
+          <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-primary" /> Results & Rankings
+          </h1>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 animate-fade-in-up">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Rankings */}
         <div className="space-y-3">
           {candidateTotals.map((c, i) => (
             <div
               key={c.id}
-              className={`bg-surface-secondary border rounded-xl p-4 flex items-center gap-4 transition-all ${
-                i === 0 ? "border-pageant-gold/30 shadow-lg shadow-pageant-gold/5" :
+              className={`bg-card border rounded-xl p-4 flex items-center gap-4 transition-all ${
+                i === 0 ? "border-primary/30 shadow-lg shadow-primary/5" :
                 i === 1 ? "border-gray-400/20" :
-                i === 2 ? "border-amber-700/20" : "border-border-subtle"
+                i === 2 ? "border-amber-700/20" : "border-border"
               }`}
             >
               {/* Rank */}
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                i === 0 ? "bg-pageant-gold text-black" :
+                i === 0 ? "bg-primary text-primary-foreground" :
                 i === 1 ? "bg-gray-400 text-black" :
-                i === 2 ? "bg-amber-700 text-white" : "bg-surface-elevated text-white/40"
+                i === 2 ? "bg-amber-700 text-white" : "bg-secondary text-muted-foreground"
               }`}>
                 {i + 1}
               </div>
@@ -94,14 +99,14 @@ export function ResultsPage() {
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-white">{c.name}</h3>
-                <p className="text-xs text-white/30">Candidate #{c.candidateNumber}</p>
+                <h3 className="font-bold text-foreground">{c.name}</h3>
+                <p className="text-xs text-muted-foreground">Candidate #{c.candidateNumber}</p>
               </div>
 
               {/* Score */}
               <div className="text-right">
-                <span className="text-2xl font-bold font-mono text-pageant-gold">{c.total.toFixed(2)}</span>
-                <p className="text-[10px] text-white/30 uppercase tracking-wider">Total Score</p>
+                <span className="text-2xl font-bold font-mono text-primary">{c.total.toFixed(2)}</span>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Score</p>
               </div>
             </div>
           ))}
@@ -109,7 +114,7 @@ export function ResultsPage() {
 
         {candidateTotals.length === 0 && (
           <div className="text-center py-16 text-white/30">
-            <div className="text-5xl mb-4">📊</div>
+            <BarChart3 className="w-12 h-12 text-white/20 mx-auto mb-3" />
             <p>No scores submitted yet.</p>
           </div>
         )}

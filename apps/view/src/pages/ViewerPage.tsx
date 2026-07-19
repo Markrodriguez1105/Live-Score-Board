@@ -227,11 +227,11 @@ export function ViewerPage() {
       <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/40 to-black/90" />
 
       {/* Content */}
-      <div className="absolute inset-y-0 right-0 w-1/2 flex flex-col justify-center items-center px-12 z-10 space-y-8 animate-fade-in-up">
+      <div className="absolute inset-y-0 right-0 w-1/2 flex flex-col justify-center items-center px-12 z-10 space-y-8">
         {/* Category Badge */}
         {category && (
-          <div className="px-8 py-3 bg-black/60 backdrop-blur-md rounded-full border border-pageant-gold/30">
-            <span className="text-pageant-gold text-xl font-bold uppercase tracking-[0.3em]">
+          <div className="px-8 py-3 bg-black/60 backdrop-blur-md rounded-full border border-primary/30">
+            <span className="text-primary text-xl font-bold uppercase tracking-[0.3em]">
               {category.name}
             </span>
           </div>
@@ -249,7 +249,7 @@ export function ViewerPage() {
 
         {/* Scores */}
         {presentation.showScores && scores.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mt-4 animate-fade-in-up">
+          <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mt-4">
             {scores.map((s, i) => (
               <div
                 key={s.judgeId || i}

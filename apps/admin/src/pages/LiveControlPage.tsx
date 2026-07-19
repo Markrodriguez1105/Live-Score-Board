@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
+import { ArrowLeft, Clapperboard, Play, Pause, Eye, EyeOff } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { CardContent } from "@pageant/ui/components/card";
@@ -55,12 +56,16 @@ export function LiveControlPage() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=128`;
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
-            <h1 className="text-lg font-bold text-white">🎬 Live Control</h1>
+            <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Clapperboard className="w-5 h-5 text-primary" /> Live Control
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             {presentation?.isIdle ? (
@@ -78,7 +83,7 @@ export function LiveControlPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6 animate-fade-in-up">
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         {/* Control Bar */}
         <Card>
           <CardContent className="p-5 flex flex-wrap items-center gap-3">
@@ -86,14 +91,30 @@ export function LiveControlPage() {
               onClick={() => updatePresentation({ isIdle: !presentation?.isIdle })}
               variant={presentation?.isIdle ? "default" : "secondary"}
             >
-              {presentation?.isIdle ? "▶ Go Live" : "⏸ Set Idle"}
+              {presentation?.isIdle ? (
+                <>
+                  <Play className="w-4 h-4 mr-1.5 inline" /> Go Live
+                </>
+              ) : (
+                <>
+                  <Pause className="w-4 h-4 mr-1.5 inline" /> Set Idle
+                </>
+              )}
             </Button>
 
             <Button
               onClick={() => updatePresentation({ showScores: !presentation?.showScores })}
               variant={presentation?.showScores ? "secondary" : "outline"}
             >
-              {presentation?.showScores ? "🙈 Hide Scores" : "👁 Reveal Scores"}
+              {presentation?.showScores ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-1.5 inline" /> Hide Scores
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-1.5 inline" /> Reveal Scores
+                </>
+              )}
             </Button>
 
             <Button
@@ -109,15 +130,15 @@ export function LiveControlPage() {
           {/* Category Selector */}
           <Card>
             <CardContent className="p-5">
-              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Active Category</h3>
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Active Category</h3>
               <div className="space-y-2">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => updatePresentation({ activeCategoryId: cat.id })}
                     className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${presentation?.activeCategoryId === cat.id
-                      ? "bg-pageant-purple text-white font-bold border-pageant-purple shadow-lg shadow-pageant-purple/10"
-                      : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10"
+                      ? "bg-primary text-primary-foreground font-bold border-primary shadow-lg shadow-primary/10"
+                      : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                       }`}
                   >
                     {cat.name}
@@ -131,7 +152,7 @@ export function LiveControlPage() {
           {/* Candidate Selector */}
           <Card className="lg:col-span-2">
             <CardContent className="p-5">
-              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
                 Select Candidate to Display
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-125 overflow-y-auto">
@@ -140,8 +161,8 @@ export function LiveControlPage() {
                     key={c.id}
                     onClick={() => updatePresentation({ activeCandidateId: c.id, isIdle: false })}
                     className={`relative p-3 rounded-xl text-center transition-all border ${presentation?.activeCandidateId === c.id
-                      ? "bg-pageant-purple/10 border-pageant-purple/60 shadow-lg"
-                      : "bg-white/5 border-white/5 hover:bg-white/10"
+                      ? "bg-primary/10 border-primary/60 shadow-lg"
+                      : "bg-muted/50 border-border hover:bg-muted"
                       }`}
                   >
                     <img
@@ -149,8 +170,8 @@ export function LiveControlPage() {
                       alt={c.name}
                       className="w-14 h-14 rounded-full object-cover mx-auto mb-2 ring-2 ring-white/10"
                     />
-                    <p className="text-xs font-semibold text-white truncate">{c.name}</p>
-                    <p className="text-[10px] text-white/30">#{c.candidateNumber}</p>
+                    <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
+                    <p className="text-[10px] text-muted-foreground">#{c.candidateNumber}</p>
                     {presentation?.activeCandidateId === c.id && (
                       <div className="absolute top-1.5 right-1.5 w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
                     )}
@@ -163,14 +184,14 @@ export function LiveControlPage() {
 
         {/* Current State Preview */}
         {activeCandidate && (
-          <Card className="border-pageant-purple/20">
+          <Card className="border-primary/20">
             <CardContent className="p-6">
-              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Currently Displaying</h3>
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Currently Displaying</h3>
               <div className="flex items-center gap-4">
-                <img src={activeCandidate.photoUrl || getFallback(activeCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-pageant-gold" />
+                <img src={activeCandidate.photoUrl || getFallback(activeCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-2" />
                 <div>
-                  <h2 className="text-xl font-bold text-white">{activeCandidate.name}</h2>
-                  <p className="text-sm text-white/40">
+                  <h2 className="text-xl font-bold text-foreground">{activeCandidate.name}</h2>
+                  <p className="text-sm text-muted-foreground">
                     Candidate #{activeCandidate.candidateNumber}
                     {activeCategory && <span> · {activeCategory.name}</span>}
                   </p>

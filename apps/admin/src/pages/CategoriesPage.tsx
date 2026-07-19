@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, ClipboardList, Plus, X } from "lucide-react";
 import type { CategoryWithCriteria, CreateCriteria, Category, Criteria } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -95,28 +96,30 @@ export function CategoriesPage() {
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
-            <h1 className="text-lg font-bold text-white">Categories & Criteria</h1>
+            <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <h1 className="text-lg font-bold text-foreground">Categories & Criteria</h1>
           </div>
           <Button onClick={() => setShowCatModal(true)}>
-            + Add Category
+            <Plus className="w-4 h-4 mr-1.5" /> Add Category
           </Button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-4 animate-fade-in-up">
+      <main className="max-w-5xl mx-auto px-6 py-8 space-y-4">
         {/* Weight Summary */}
         <div className={`text-sm px-4 py-3 rounded-xl border ${totalWeight === 100 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"}`}>
           Total Category Weight: <span className="font-bold">{totalWeight}%</span> {totalWeight !== 100 && "(should equal 100%)"}
         </div>
 
         {categories.length === 0 ? (
-          <div className="text-center py-16 text-white/30">
-            <div className="text-5xl mb-4">📋</div>
+          <div className="text-center py-16 text-muted-foreground">
+            <ClipboardList className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p>No categories yet. Add your first scoring category.</p>
           </div>
         ) : (
@@ -125,14 +128,14 @@ export function CategoriesPage() {
             return (
               <Card key={cat.id}>
                 {/* Category Header */}
-                <div className="px-5 py-4 flex items-center justify-between border-b border-border-subtle bg-white/1">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-card/50">
                   <div>
-                    <h3 className="font-bold text-white text-base">{cat.name}</h3>
-                    <p className="text-xs text-white/40">Weight: {cat.weight}% of total</p>
+                    <h3 className="font-bold text-foreground text-base">{cat.name}</h3>
+                    <p className="text-xs text-muted-foreground">Weight: {cat.weight}% of total</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowCritModal(cat.id)}>
-                      + Criteria
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Criteria
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => setEditCategoryData(cat)}>
                       Edit
@@ -144,26 +147,26 @@ export function CategoriesPage() {
                 </div>
 
                 {/* Criteria List */}
-                <div className="divide-y divide-border-subtle">
+                <div className="divide-y divide-border">
                   {cat.criteria.length === 0 ? (
-                    <div className="px-5 py-6 text-center text-white/20 text-sm">No criteria yet</div>
+                    <div className="px-5 py-6 text-center text-muted-foreground/50 text-sm">No criteria yet</div>
                   ) : (
                     <>
                       {cat.criteria.map((cr) => (
-                        <div key={cr.id} className="px-5 py-3 flex items-center justify-between hover:bg-white/1 transition-colors">
+                        <div key={cr.id} className="px-5 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
                           <div>
-                            <span className="text-sm font-medium text-white">{cr.name}</span>
-                            <div className="flex gap-3 mt-0.5 text-xs text-white/30">
+                            <span className="text-sm font-medium text-foreground">{cr.name}</span>
+                            <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
                               <span>Weight: {cr.weight}%</span>
                               <span>Range: {cr.minScore}–{cr.maxScore}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => setEditCriterionData(cr)} className="text-white/40 hover:text-white">
+                            <Button variant="ghost" size="sm" onClick={() => setEditCriterionData(cr)} className="text-muted-foreground hover:text-foreground">
                               Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => deleteCriterion(cr.id)} className="text-white/30 hover:text-red-400">
-                              ✕
+                            <Button variant="ghost" size="sm" onClick={() => deleteCriterion(cr.id)} className="text-muted-foreground hover:text-destructive">
+                              <X className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </div>

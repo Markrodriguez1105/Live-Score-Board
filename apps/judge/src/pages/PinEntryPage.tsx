@@ -88,8 +88,8 @@ export function PinEntryPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-primary px-4">
-      <div className="w-full max-w-sm animate-fade-in-up">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
+      <div className="w-full max-w-sm">
         <div className="flex flex-col justify-center items-center mb-8 gap-4">
           <Logo size={30} />
           <div className="flex flex-col justify-center items-center text-center">
@@ -105,8 +105,8 @@ export function PinEntryPage() {
               <div
                 key={i}
                 className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold font-mono transition-all ${pin[i]
-                  ? "border-pageant-gold bg-pageant-gold/10 text-pageant-gold"
-                  : "border-white/10 bg-surface-secondary text-white/20"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground"
                   } ${error ? "border-red-500/20 bg-red-500/10 text-red-400" : ""}`}
               >
                 {pin[i] ? "●" : ""}
@@ -122,7 +122,7 @@ export function PinEntryPage() {
                 type="button"
                 disabled={loading}
                 onClick={() => handlePinDigit(d)}
-                className="h-16 bg-surface-secondary border border-border-subtle rounded-xl text-xl font-bold text-white hover:bg-surface-elevated active:scale-95 transition-all"
+                className="h-16 bg-card border border-border rounded-xl text-xl font-bold text-foreground hover:bg-secondary active:scale-95 transition-all"
               >
                 {d}
               </Button>
@@ -139,7 +139,7 @@ export function PinEntryPage() {
               type="button"
               disabled={loading}
               onClick={() => handlePinDigit("0")}
-              className="h-16 bg-surface-secondary border border-border-subtle rounded-xl text-xl font-bold text-white hover:bg-surface-elevated active:scale-95 transition-all"
+              className="h-16 bg-card border border-border rounded-xl text-xl font-bold text-foreground hover:bg-secondary active:scale-95 transition-all"
             >
               0
             </Button>
@@ -147,7 +147,7 @@ export function PinEntryPage() {
               type="button"
               disabled={loading}
               onClick={handleBackspace}
-              className="h-16 bg-surface-secondary border border-border-subtle rounded-xl text-xl font-bold text-white/40 hover:bg-surface-elevated active:scale-95 transition-all"
+              className="h-16 bg-card border border-border rounded-xl text-xl font-bold text-muted-foreground hover:bg-secondary active:scale-95 transition-all"
             >
               ←
             </Button>

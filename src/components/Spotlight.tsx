@@ -263,16 +263,16 @@ export const Spotlight: React.FC<SpotlightProps> = ({
         {/* Active Category Banner */}
         {activeCategory && (
           <div className="flex justify-center md:pb-9">
-            <div className="px-6 py-2 md:px-8 md:py-3 bg-black/60 backdrop-blur-md rounded-full border border-pageant-gold/30">
-              <span className="text-pageant-gold text-sm md:text-xl font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">
+            <div className="px-6 py-2 md:px-8 md:py-3 bg-black/60 backdrop-blur-md rounded-full border border-primary/30">
+              <span className="text-primary text-sm md:text-xl font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">
                 {activeCategory}
               </span>
             </div>
           </div>
         )}
-        <div className="text-center space-y-2 animate-fade-in-up">
+        <div className="text-center space-y-2">
           {candidate.category && (
-            <div className="text-lg md:text-2xl text-pageant-gold/80 uppercase tracking-widest font-semibold mb-1 md:mb-2">
+            <div className="text-lg md:text-2xl text-primary/80 uppercase tracking-widest font-semibold mb-1 md:mb-2">
               {candidate.category}
             </div>
           )}
@@ -297,7 +297,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
                   animationFillMode: "forwards",
                 }}
               >
-                <span className="text-[10px] md:text-xs text-pageant-gold uppercase tracking-widest mb-1 md:mb-2 font-bold">
+                <span className="text-[10px] md:text-xs text-primary uppercase tracking-widest mb-1 md:mb-2 font-bold">
                   Judge {i + 1}
                 </span>
                 <span className="text-3xl md:text-6xl font-bold font-mono text-white flex items-baseline">
@@ -306,7 +306,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
                     duration={2000}
                     className="leading-none"
                   />
-                  <span className="text-pageant-gold text-2xl md:text-5xl ml-1 md:ml-2">
+                  <span className="text-primary text-2xl md:text-5xl ml-1 md:ml-2">
                     %
                   </span>
                 </span>

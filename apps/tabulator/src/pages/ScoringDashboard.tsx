@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import { BarChart3, Check, Clock, ClipboardList } from "lucide-react";
 import type { Pageant, Candidate, Judge, CategoryWithCriteria } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@pageant/ui/components/table";
@@ -115,8 +116,8 @@ export function ScoringDashboard() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-2xl">📊</span>
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-6 h-6 text-primary" />
             <h1 className="text-lg font-bold text-foreground">Tabulator Dashboard</h1>
           </div>
           <div className="flex items-center gap-3">
@@ -133,7 +134,7 @@ export function ScoringDashboard() {
         </div>
       </header>
 
-      <main className="px-6 py-6 animate-fade-in-up">
+      <main className="px-6 py-6">
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6">
           {categories.map((cat) => (
@@ -185,11 +186,11 @@ export function ScoringDashboard() {
                             }}
                             className="inline-flex items-center gap-1.5 text-emerald-400 text-sm font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg hover:bg-emerald-500/25 transition-all cursor-pointer"
                           >
-                            ✓ Scored
+                            <Check className="w-3.5 h-3.5" /> Scored
                           </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-white/20 text-sm bg-white/5 border border-white/5 px-3 py-1 rounded-lg font-medium">
-                            ⏳ Pending
+                            <Clock className="w-3.5 h-3.5" /> Pending
                           </span>
                         )}
                       </TableCell>
@@ -203,7 +204,7 @@ export function ScoringDashboard() {
 
         {candidates.length === 0 && (
           <div className="text-center py-16 text-white/30">
-            <div className="text-5xl mb-4">📋</div>
+            <ClipboardList className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p>No data to display. Select a pageant with candidates.</p>
           </div>
         )}

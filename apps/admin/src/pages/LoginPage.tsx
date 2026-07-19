@@ -2,6 +2,7 @@ import { Button } from "@pageant/ui/components/button";
 import { Card, CardContent } from "@pageant/ui/components/card";
 import { Input } from "@pageant/ui/components/input";
 import { Label } from "@pageant/ui/components/label";
+import Logo from "@pageant/ui/components/logo";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -41,61 +42,58 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-fade-in-up">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <div className="w-80 animate-fade-in-up">
         {/* Header */}
-        <Card className="w-100">
-          <CardContent className="p-6">
-            <div className="flex flex-col justify-center items-center">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center">
-                <span className="text-3xl">👑</span>
-              </div>
-              <h1 className="text-2xl font-bold">Pageant Admin</h1>
-              <p className="text-sm mt-1">Sign in to manage your pageants</p>
+        <div className="flex flex-col justify-center items-center mb-8 gap-4">
+          <Logo size={40} />
+          <div className="flex flex-col justify-center items-center text-center">
+            <h1 className="text-2xl font-bold tracking-tight">Pageant Admin</h1>
+            <p className="text-sm text-muted-foreground mt-1">Sign in to manage your pageants</p>
+          </div>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-2 w-full">
+            <Label htmlFor="admin-username">Username</Label>
+            <Input
+              id="admin-username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username"
+              required
+            />
+          </div>
+
+          <div className="space-y-2 w-full">
+            <Label htmlFor="admin-password">Password</Label>
+            <Input
+              id="admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-destructive text-sm">
+              {error}
             </div>
+          )}
 
-            {/* Login Form */}
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-1 w-full">
-                <Label htmlFor="admin-username">Username</Label>
-                <Input
-                  id="admin-username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1 w-full">
-                <Label htmlFor="admin-password">Password</Label>
-                <Input
-                  id="admin-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  required
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                id="admin-login-btn"
-                type="submit"
-                className="w-full bg-primary"
-              >
-                Sign In
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+          <Button
+            id="admin-login-btn"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2.5 rounded-lg transition-colors"
+          >
+            {loading ? "Signing In..." : "Sign In"}
+          </Button>
+        </form>
       </div>
     </div>
   );

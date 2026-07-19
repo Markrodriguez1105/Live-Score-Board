@@ -1,3 +1,8 @@
+import { Button } from "@pageant/ui/components/button";
+import { Card, CardContent } from "@pageant/ui/components/card";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
+import Logo from "@pageant/ui/components/logo";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,29 +38,57 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-primary px-4">
-      <div className="w-full max-w-md animate-fade-in-up">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-pageant-purple/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">📊</span>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-80 animate-fade-in-up">
+        {/* Header */}
+        <div className="flex flex-col justify-center items-center mb-8 gap-4">
+          <Logo size={40} />
+          <div className="flex flex-col justify-center items-center text-center">
+            <h1 className="text-2xl font-bold tracking-tight">Tabulator Login</h1>
+            <p className="text-sm text-muted-foreground mt-1">Use admin credentials to access</p>
           </div>
-          <h1 className="text-2xl font-bold text-white">Tabulator Login</h1>
-          <p className="text-sm text-white/40 mt-1">Use admin credentials to access</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-surface-secondary border border-border-subtle rounded-2xl p-6 space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Username</label>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pageant-purple" required />
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-2 w-full">
+            <Label htmlFor="admin-username">Username</Label>
+            <Input
+              id="admin-username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username"
+              required
+            />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pageant-purple" required />
+
+          <div className="space-y-2 w-full">
+            <Label htmlFor="admin-password">Password</Label>
+            <Input
+              id="admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
           </div>
-          {error && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>}
-          <button type="submit" disabled={loading} className="w-full bg-pageant-purple hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all">
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-destructive text-sm">
+              {error}
+            </div>
+          )}
+
+          <Button
+            id="admin-login-btn"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2.5 rounded-lg transition-colors"
+          >
+            {loading ? "Signing In..." : "Sign In"}
+          </Button>
         </form>
       </div>
     </div>

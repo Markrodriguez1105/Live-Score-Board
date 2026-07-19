@@ -112,18 +112,18 @@ export function ScoringDashboard() {
   const currentCategory = categories.find((c) => c.id === selectedCategory);
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-full mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-2xl">📊</span>
-            <h1 className="text-lg font-bold text-white">Tabulator Dashboard</h1>
+            <h1 className="text-lg font-bold text-foreground">Tabulator Dashboard</h1>
           </div>
           <div className="flex items-center gap-3">
             <select
               value={selectedPageant}
               onChange={(e) => setSelectedPageant(e.target.value)}
-              className="bg-surface-primary border border-border-default rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pageant-purple transition-all"
+              className="bg-background border border-border rounded-xl px-4 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
             >
               {pageants.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -153,7 +153,7 @@ export function ScoringDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-surface-secondary/90 backdrop-blur z-10">
+                <TableHead className="sticky left-0 bg-card/90 backdrop-blur z-10">
                   Candidate
                 </TableHead>
                 {judges.map((j) => (
@@ -166,10 +166,10 @@ export function ScoringDashboard() {
             <TableBody>
               {candidates.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell className="sticky left-0 bg-surface-secondary/90 backdrop-blur z-10">
+                  <TableCell className="sticky left-0 bg-card/90 backdrop-blur z-10">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-white/30 font-mono w-6">#{c.candidateNumber}</span>
-                      <span className="text-sm font-semibold text-white">{c.name}</span>
+                      <span className="text-xs text-muted-foreground font-mono w-6">#{c.candidateNumber}</span>
+                      <span className="text-sm font-semibold text-foreground">{c.name}</span>
                     </div>
                   </TableCell>
                   {judges.map((j) => {

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@page
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
 import { Input } from "@pageant/ui/components/input";
 import { Label } from "@pageant/ui/components/label";
+import Logo from "@pageant/ui/components/logo";
 
 const API_BASE = "/api";
 
@@ -57,8 +58,8 @@ export function DashboardPage() {
       {/* Header */}
       <header className="border-b border-border-subtle bg-surface-secondary/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">👑</span>
+          <div className="flex items-center gap-2">
+            <Logo size={40} />
             <h1 className="text-xl font-bold text-white">Pageant Admin</h1>
           </div>
           <Button
@@ -74,7 +75,7 @@ export function DashboardPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="h-8 w-8 border-[3px] border-pageant-purple border-t-transparent rounded-full animate-spin" />
+            <div className="h-8 w-8 border-[3px] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : pageants.length === 0 ? (
           <div className="text-center py-20 animate-fade-in-up">
@@ -94,11 +95,11 @@ export function DashboardPage() {
               <Card
                 key={p.id}
                 onClick={() => navigate(`/pageants/${p.id}`)}
-                className="cursor-pointer hover:border-pageant-purple/30 hover:shadow-lg hover:shadow-pageant-purple/5 transition-all group animate-fade-in-up"
+                className="cursor-pointer transition-all group animate-fade-in-up"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <CardTitle className="group-hover:text-pageant-gold transition-colors truncate pr-2">
+                    <CardTitle className="transition-colors truncate pr-2">
                       {p.name}
                     </CardTitle>
                     <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${statusColors[p.status]}`}>
@@ -160,7 +161,7 @@ export function DashboardPage() {
                 />
               </div>
             </div>
-            <div>
+            <div className="space-y-1.5 w-full">
               <Label htmlFor="create-description">Description</Label>
               <textarea
                 id="create-description"

@@ -41,22 +41,22 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-primary px-4">
-      <div className="w-full max-w-md animate-fade-in-up">
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-fade-in-up">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-pageant-purple/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">👑</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">Pageant Admin</h1>
-          <p className="text-sm text-white/40 mt-1">Sign in to manage your pageants</p>
-        </div>
-
-        {/* Login Form */}
-        <Card className="shadow-2xl">
+        <Card className="w-100">
           <CardContent className="p-6">
+            <div className="flex flex-col justify-center items-center">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center">
+                <span className="text-3xl">👑</span>
+              </div>
+              <h1 className="text-2xl font-bold">Pageant Admin</h1>
+              <p className="text-sm mt-1">Sign in to manage your pageants</p>
+            </div>
+
+            {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-1.5 w-full">
+              <div className="space-y-1 w-full">
                 <Label htmlFor="admin-username">Username</Label>
                 <Input
                   id="admin-username"
@@ -68,7 +68,7 @@ export function LoginPage() {
                 />
               </div>
 
-              <div className="space-y-1.5 w-full">
+              <div className="space-y-1 w-full">
                 <Label htmlFor="admin-password">Password</Label>
                 <Input
                   id="admin-password"
@@ -89,8 +89,7 @@ export function LoginPage() {
               <Button
                 id="admin-login-btn"
                 type="submit"
-                // loading={loading}
-                className="w-full py-3"
+                className="w-full bg-primary"
               >
                 Sign In
               </Button>

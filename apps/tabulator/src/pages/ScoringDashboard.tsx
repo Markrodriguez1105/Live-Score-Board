@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import { useToast, Button, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@pageant/ui";
 import type { Pageant, Candidate, Judge, CategoryWithCriteria } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@pageant/ui/components/table";
+import { toast } from "sonner";
 
 const API_BASE = "/api";
 const SOCKET_URL = window.location.origin;
 
 export function ScoringDashboard() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [pageants, setPageants] = useState<Pageant[]>([]);
   const [selectedPageant, setSelectedPageant] = useState<string>("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -102,9 +103,9 @@ export function ScoringDashboard() {
     });
     const data = await res.json();
     if (data.success) {
-      toast("Score overridden successfully", "success");
+      toast.success("Score overridden successfully");
     } else {
-      toast(data.error || "Failed to override", "error");
+      toast.error(data.error || "Failed to override");
     }
   };
 
@@ -139,7 +140,7 @@ export function ScoringDashboard() {
             <Button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              variant={selectedCategory === cat.id ? "gold" : "outline"}
+              variant={selectedCategory === cat.id ? "secondary" : "outline"}
               className="whitespace-nowrap"
             >
               {cat.name} ({cat.weight}%)

@@ -1,39 +1,114 @@
-import React from "react";
+import * as React from "react"
 
-export const Table: React.FC<React.PropsWithChildren<React.TableHTMLAttributes<HTMLTableElement>>> = ({ className = "", children, ...props }) => (
-  <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface-secondary/20">
-    <table className={`w-full border-collapse text-sm text-left ${className}`} {...props}>
-      {children}
-    </table>
-  </div>
-);
+import { cn } from "@pageant/ui/lib/utils"
 
-export const TableHeader: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLTableSectionElement>>> = ({ className = "", children, ...props }) => (
-  <thead className={`border-b border-border-subtle bg-white/2 ${className}`} {...props}>
-    {children}
-  </thead>
-);
+function Table({ className, ...props }: React.ComponentProps<"table">) {
+  return (
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto"
+    >
+      <table
+        data-slot="table"
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
+    </div>
+  )
+}
 
-export const TableBody: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLTableSectionElement>>> = ({ className = "", children, ...props }) => (
-  <tbody className={`divide-y divide-border-subtle ${className}`} {...props}>
-    {children}
-  </tbody>
-);
+function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+  return (
+    <thead
+      data-slot="table-header"
+      className={cn("[&_tr]:border-b", className)}
+      {...props}
+    />
+  )
+}
 
-export const TableRow: React.FC<React.PropsWithChildren<React.HTMLAttributes<HTMLTableRowElement>>> = ({ className = "", children, ...props }) => (
-  <tr className={`transition-colors hover:bg-white/1 ${className}`} {...props}>
-    {children}
-  </tr>
-);
+function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+  return (
+    <tbody
+      data-slot="table-body"
+      className={cn("[&_tr:last-child]:border-0", className)}
+      {...props}
+    />
+  )
+}
 
-export const TableHead: React.FC<React.PropsWithChildren<React.ThHTMLAttributes<HTMLTableCellElement>>> = ({ className = "", children, ...props }) => (
-  <th className={`px-4 py-3 text-xs font-bold text-white/40 uppercase tracking-widest ${className}`} {...props}>
-    {children}
-  </th>
-);
+function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+  return (
+    <tfoot
+      data-slot="table-footer"
+      className={cn(
+        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-export const TableCell: React.FC<React.PropsWithChildren<React.TdHTMLAttributes<HTMLTableCellElement>>> = ({ className = "", children, ...props }) => (
-  <td className={`px-4 py-3 text-white/80 align-middle ${className}`} {...props}>
-    {children}
-  </td>
-);
+function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+  return (
+    <tr
+      data-slot="table-row"
+      className={cn(
+        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+  return (
+    <th
+      data-slot="table-head"
+      className={cn(
+        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+  return (
+    <td
+      data-slot="table-cell"
+      className={cn(
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function TableCaption({
+  className,
+  ...props
+}: React.ComponentProps<"caption">) {
+  return (
+    <caption
+      data-slot="table-caption"
+      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+}

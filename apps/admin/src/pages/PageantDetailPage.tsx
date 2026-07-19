@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from "@pageant/ui";
 import type { Pageant } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Card, CardContent } from "@pageant/ui/components/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 
 const API_BASE = "/api";
 
@@ -96,7 +100,7 @@ export function PageantDetailPage() {
                 </div>
                 <div className="flex gap-2 mt-4">
                   <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit Details</Button>
-                  <Button variant="danger" size="sm" onClick={handleDelete}>Delete</Button>
+                  <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
                 </div>
               </div>
             </div>
@@ -118,57 +122,73 @@ export function PageantDetailPage() {
         </div>
       </main>
 
-      {/* Edit Modal */}
-      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit Pageant Details">
-        <form onSubmit={handleUpdate} className="space-y-4">
-          <Input
-            label="Name *"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              type="date"
-              label="Date *"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              required
-            />
-            <Input
-              label="Venue *"
-              value={form.venue}
-              onChange={(e) => setForm({ ...form, venue: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value as Pageant["status"] })}
-              className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 transition-all"
-            >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={2}
-              className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
-            />
-          </div>
-          <div className="flex gap-2 justify-end mt-4">
-            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-            <Button type="submit" variant="primary">Save Changes</Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Edit Dialog */}
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Pageant Details</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-date">Date *</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-venue">Venue *</Label>
+                <Input
+                  id="edit-venue"
+                  value={form.venue}
+                  onChange={(e) => setForm({ ...form, venue: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-status">Status</Label>
+              <select
+                id="edit-status"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as Pageant["status"] })}
+                className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 transition-all"
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <textarea
+                id="edit-description"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={2}
+                className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
+              />
+            </div>
+            <div className="flex gap-2 justify-end mt-4">
+              <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button type="submit">Save Changes</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

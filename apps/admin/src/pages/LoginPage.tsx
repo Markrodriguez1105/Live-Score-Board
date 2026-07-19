@@ -1,6 +1,9 @@
+import { Button } from "@pageant/ui/components/button";
+import { Card, CardContent } from "@pageant/ui/components/card";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Button, Card, CardContent } from "@pageant/ui";
 
 const API_BASE = "/api";
 
@@ -53,25 +56,29 @@ export function LoginPage() {
         <Card className="shadow-2xl">
           <CardContent className="p-6">
             <form onSubmit={handleLogin} className="space-y-5">
-              <Input
-                id="admin-username"
-                type="text"
-                label="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-                required
-              />
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="admin-username">Username</Label>
+                <Input
+                  id="admin-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  required
+                />
+              </div>
 
-              <Input
-                id="admin-password"
-                type="password"
-                label="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                required
-              />
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="admin-password">Password</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                />
+              </div>
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
@@ -82,7 +89,7 @@ export function LoginPage() {
               <Button
                 id="admin-login-btn"
                 type="submit"
-                loading={loading}
+                // loading={loading}
                 className="w-full py-3"
               >
                 Sign In

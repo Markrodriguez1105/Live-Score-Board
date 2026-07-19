@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
-import { IdleScreen, ScoreDisplay } from "@pageant/ui";
+import { ScoreDisplay } from "@pageant/ui/components/score-display";
 import type { PresentationState, Candidate, Pageant, Category, CategoryWithCriteria } from "@pageant/types";
+import { IdleScreen } from "@pageant/ui/components/idle-screen";
 
 const API_BASE = "/api";
 const SOCKET_URL = window.location.origin;
@@ -223,7 +224,7 @@ export function ViewerPage() {
       />
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/40 to-black/90" />
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/40 to-black/90" />
 
       {/* Content */}
       <div className="absolute inset-y-0 right-0 w-1/2 flex flex-col justify-center items-center px-12 z-10 space-y-8 animate-fade-in-up">

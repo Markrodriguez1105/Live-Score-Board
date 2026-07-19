@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { useToast, Button, Card } from "@pageant/ui";
+import { Button } from "@pageant/ui/components/button";
+import { Card } from "@pageant/ui/components/card";
+import { toast } from "sonner";
 import type { PresentationState, Candidate, Criteria, CategoryWithCriteria } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -9,7 +11,6 @@ const SOCKET_URL = window.location.origin;
 
 export function ScoringPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [presentation, setPresentation] = useState<PresentationState | null>(null);
@@ -167,7 +168,7 @@ export function ScoringPage() {
       const data = await res.json();
       if (data.success) {
         setSubmitted(true);
-        toast("Scores submitted successfully!", "success");
+        toast.success("Scores submitted successfully!");
 
         // Update scored map locally
         setScoredMap((prev) => ({
@@ -181,10 +182,10 @@ export function ScoringPage() {
         // Emit socket event to notify other screens
         socket?.emit("judge:submit-score", { candidateId: selectedCandidateId, scores });
       } else {
-        toast(data.error || "Failed to submit score", "error");
+        toast.error(data.error || "Failed to submit score");
       }
     } catch {
-      toast("Network error. Try again.", "error");
+      toast.error("Network error. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -231,8 +232,8 @@ export function ScoringPage() {
                   key={cat.id}
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink ${selectedCategoryId === cat.id
-                      ? "bg-pageant-purple text-white"
-                      : "bg-white/5 text-white/50 hover:bg-white/10"
+                    ? "bg-pageant-purple text-white"
+                    : "bg-white/5 text-white/50 hover:bg-white/10"
                     }`}
                 >
                   {cat.name} ({cat.weight}%)
@@ -255,8 +256,8 @@ export function ScoringPage() {
                     key={c.id}
                     onClick={() => setSelectedCandidateId(c.id)}
                     className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink min-w-50 md:min-w-0 ${isSelected
-                        ? "bg-pageant-gold/15 border-pageant-gold text-white"
-                        : "bg-white/5 border-border-subtle hover:bg-white/10 text-white/70"
+                      ? "bg-pageant-gold/15 border-pageant-gold text-white"
+                      : "bg-white/5 border-border-subtle hover:bg-white/10 text-white/70"
                       }`}
                   >
                     <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
@@ -334,8 +335,8 @@ export function ScoringPage() {
                           type="button"
                           onClick={() => handleScoreChange(c.id, v, c.minScore, c.maxScore)}
                           className={`flex-1 py-1 rounded text-[10px] font-semibold transition-all ${scoreValues[c.id] === v
-                              ? "bg-pageant-gold text-black"
-                              : "bg-surface-elevated text-white/40 hover:text-white"
+                            ? "bg-pageant-gold text-black"
+                            : "bg-surface-elevated text-white/40 hover:text-white"
                             }`}
                         >
                           {v}
@@ -350,9 +351,8 @@ export function ScoringPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || criteriaList.length === 0}
-                variant="gold"
+                variant="secondary"
                 size="lg"
-                loading={submitting}
                 className="w-full py-4 text-base"
               >
                 {submitted ? "Update Scores" : "Submit Scores"}

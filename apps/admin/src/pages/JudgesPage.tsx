@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Modal, Button, Input, Card } from "@pageant/ui";
 import type { Judge } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Card } from "@pageant/ui/components/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 
 const API_BASE = "/api";
 
@@ -84,7 +88,7 @@ export function JudgesPage() {
             <Button onClick={() => setShowPins(!showPins)} variant="secondary">
               {showPins ? "Hide PINs" : "Show PINs"}
             </Button>
-            <Button onClick={() => { generatePin(); setShowCreate(true); }} variant="primary">
+            <Button onClick={() => { generatePin(); setShowCreate(true); }}>
               + Add Judge
             </Button>
           </div>
@@ -121,7 +125,7 @@ export function JudgesPage() {
                   <Button variant="outline" size="sm" onClick={() => setEditJudgeData(j)}>
                     Edit
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => deleteJudge(j.id)} className="px-3">
+                  <Button variant="destructive" size="sm" onClick={() => deleteJudge(j.id)} className="px-3">
                     Delete
                   </Button>
                 </div>
@@ -148,66 +152,84 @@ export function JudgesPage() {
         )}
       </main>
 
-      {/* Add Judge Modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Add Judge">
-        <form onSubmit={createJudge} className="space-y-4">
-          <Input
-            label="Name *"
-            placeholder="e.g. Judge Alpha"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <div>
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">PIN *</label>
-            <div className="flex gap-2">
+      {/* Add Judge Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Judge</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createJudge} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="judge-name">Name *</Label>
               <Input
-                value={form.pin}
-                onChange={(e) => setForm({ ...form, pin: e.target.value })}
-                className="font-mono tracking-wider"
-                placeholder="1234"
+                id="judge-name"
+                placeholder="e.g. Judge Alpha"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
-              <Button type="button" variant="secondary" onClick={generatePin} className="shrink-0">
-                🎲 Random
-              </Button>
             </div>
-          </div>
-          <Button type="submit" variant="primary" className="w-full py-3">Add Judge</Button>
-        </form>
-      </Modal>
-
-      {/* Edit Judge Modal */}
-      <Modal isOpen={!!editJudgeData} onClose={() => setEditJudgeData(null)} title="Edit Judge">
-        {editJudgeData && (
-          <form onSubmit={updateJudge} className="space-y-4">
-            <Input
-              label="Name *"
-              value={editJudgeData.name}
-              onChange={(e) => setEditJudgeData({ ...editJudgeData, name: e.target.value })}
-              required
-            />
             <div>
-              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">PIN *</label>
+              <Label htmlFor="judge-pin">PIN *</Label>
               <div className="flex gap-2">
                 <Input
-                  value={editJudgeData.pin}
-                  onChange={(e) => setEditJudgeData({ ...editJudgeData, pin: e.target.value })}
+                  id="judge-pin"
+                  value={form.pin}
+                  onChange={(e) => setForm({ ...form, pin: e.target.value })}
                   className="font-mono tracking-wider"
+                  placeholder="1234"
                   required
                 />
-                <Button type="button" variant="secondary" onClick={generatePinForEdit} className="shrink-0">
+                <Button type="button" variant="secondary" onClick={generatePin} className="shrink-0">
                   🎲 Random
                 </Button>
               </div>
             </div>
-            <div className="flex gap-2 justify-end mt-4">
-              <Button type="button" variant="ghost" onClick={() => setEditJudgeData(null)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
-            </div>
+            <Button type="submit" className="w-full py-3">Add Judge</Button>
           </form>
-        )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Judge Dialog */}
+      <Dialog open={!!editJudgeData} onOpenChange={(open) => { if (!open) setEditJudgeData(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Judge</DialogTitle>
+          </DialogHeader>
+          {editJudgeData && (
+            <form onSubmit={updateJudge} className="space-y-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-judge-name">Name *</Label>
+                <Input
+                  id="edit-judge-name"
+                  value={editJudgeData.name}
+                  onChange={(e) => setEditJudgeData({ ...editJudgeData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-judge-pin">PIN *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-judge-pin"
+                    value={editJudgeData.pin}
+                    onChange={(e) => setEditJudgeData({ ...editJudgeData, pin: e.target.value })}
+                    className="font-mono tracking-wider"
+                    required
+                  />
+                  <Button type="button" variant="secondary" onClick={generatePinForEdit} className="shrink-0">
+                    🎲 Random
+                  </Button>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end mt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditJudgeData(null)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

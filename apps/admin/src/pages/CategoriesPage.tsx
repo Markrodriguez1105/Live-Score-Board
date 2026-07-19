@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Modal, Button, Input, Card } from "@pageant/ui";
 import type { CategoryWithCriteria, CreateCriteria, Category, Criteria } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Card } from "@pageant/ui/components/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 
 const API_BASE = "/api";
 
@@ -98,7 +102,7 @@ export function CategoriesPage() {
             <button onClick={() => navigate(`/pageants/${id}`)} className="text-white/40 hover:text-white">← Back</button>
             <h1 className="text-lg font-bold text-white">Categories & Criteria</h1>
           </div>
-          <Button onClick={() => setShowCatModal(true)} variant="primary">
+          <Button onClick={() => setShowCatModal(true)}>
             + Add Category
           </Button>
         </div>
@@ -133,7 +137,7 @@ export function CategoriesPage() {
                     <Button variant="secondary" size="sm" onClick={() => setEditCategoryData(cat)}>
                       Edit
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => deleteCategory(cat.id)}>
+                    <Button variant="destructive" size="sm" onClick={() => deleteCategory(cat.id)}>
                       Delete
                     </Button>
                   </div>
@@ -176,139 +180,195 @@ export function CategoriesPage() {
         )}
       </main>
 
-      {/* Create Category Modal */}
-      <Modal isOpen={showCatModal} onClose={() => setShowCatModal(false)} title="Add Category">
-        <form onSubmit={createCategory} className="space-y-4">
-          <Input
-            label="Name *"
-            placeholder="e.g. Swimwear"
-            value={catForm.name}
-            onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
-            required
-          />
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            label="Weight (%) *"
-            placeholder="e.g. 25"
-            value={catForm.weight || ""}
-            onChange={(e) => setCatForm({ ...catForm, weight: Number(e.target.value) })}
-            required
-          />
-          <Button type="submit" variant="primary" className="w-full py-3">Add Category</Button>
-        </form>
-      </Modal>
-
-      {/* Edit Category Modal */}
-      <Modal isOpen={!!editCategoryData} onClose={() => setEditCategoryData(null)} title="Edit Category">
-        {editCategoryData && (
-          <form onSubmit={updateCategory} className="space-y-4">
-            <Input
-              label="Name *"
-              value={editCategoryData.name}
-              onChange={(e) => setEditCategoryData({ ...editCategoryData, name: e.target.value })}
-              required
-            />
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              label="Weight (%) *"
-              value={editCategoryData.weight}
-              onChange={(e) => setEditCategoryData({ ...editCategoryData, weight: Number(e.target.value) })}
-              required
-            />
-            <div className="flex gap-2 justify-end mt-4">
-              <Button type="button" variant="ghost" onClick={() => setEditCategoryData(null)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
+      {/* Create Category Dialog */}
+      <Dialog open={showCatModal} onOpenChange={setShowCatModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Category</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createCategory} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="cat-name">Name *</Label>
+              <Input
+                id="cat-name"
+                placeholder="e.g. Swimwear"
+                value={catForm.name}
+                onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
+                required
+              />
             </div>
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="cat-weight">Weight (%) *</Label>
+              <Input
+                id="cat-weight"
+                type="number"
+                min={0}
+                max={100}
+                placeholder="e.g. 25"
+                value={catForm.weight || ""}
+                onChange={(e) => setCatForm({ ...catForm, weight: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full py-3">Add Category</Button>
           </form>
-        )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
-      {/* Create Criterion Modal */}
-      <Modal isOpen={!!showCritModal} onClose={() => setShowCritModal(null)} title="Add Criterion">
-        <form onSubmit={createCriterion} className="space-y-4">
-          <Input
-            label="Name *"
-            placeholder="e.g. Poise & Bearing"
-            value={critForm.name}
-            onChange={(e) => setCritForm({ ...critForm, name: e.target.value })}
-            required
-          />
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            label="Weight within Category (%) *"
-            placeholder="e.g. 40"
-            value={critForm.weight || ""}
-            onChange={(e) => setCritForm({ ...critForm, weight: Number(e.target.value) })}
-            required
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              type="number"
-              label="Min Score *"
-              value={critForm.minScore}
-              onChange={(e) => setCritForm({ ...critForm, minScore: Number(e.target.value) })}
-              required
-            />
-            <Input
-              type="number"
-              label="Max Score *"
-              value={critForm.maxScore}
-              onChange={(e) => setCritForm({ ...critForm, maxScore: Number(e.target.value) })}
-              required
-            />
-          </div>
-          <Button type="submit" variant="primary" className="w-full py-3">Add Criterion</Button>
-        </form>
-      </Modal>
+      {/* Edit Category Dialog */}
+      <Dialog open={!!editCategoryData} onOpenChange={(open) => { if (!open) setEditCategoryData(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          {editCategoryData && (
+            <form onSubmit={updateCategory} className="space-y-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-cat-name">Name *</Label>
+                <Input
+                  id="edit-cat-name"
+                  value={editCategoryData.name}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-cat-weight">Weight (%) *</Label>
+                <Input
+                  id="edit-cat-weight"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={editCategoryData.weight}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, weight: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="flex gap-2 justify-end mt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditCategoryData(null)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Criterion Modal */}
-      <Modal isOpen={!!editCriterionData} onClose={() => setEditCriterionData(null)} title="Edit Criterion">
-        {editCriterionData && (
-          <form onSubmit={updateCriterion} className="space-y-4">
-            <Input
-              label="Name *"
-              value={editCriterionData.name}
-              onChange={(e) => setEditCriterionData({ ...editCriterionData, name: e.target.value })}
-              required
-            />
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              label="Weight within Category (%) *"
-              value={editCriterionData.weight}
-              onChange={(e) => setEditCriterionData({ ...editCriterionData, weight: Number(e.target.value) })}
-              required
-            />
+      {/* Create Criterion Dialog */}
+      <Dialog open={!!showCritModal} onOpenChange={(open) => { if (!open) setShowCritModal(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Criterion</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createCriterion} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="crit-name">Name *</Label>
+              <Input
+                id="crit-name"
+                placeholder="e.g. Poise & Bearing"
+                value={critForm.name}
+                onChange={(e) => setCritForm({ ...critForm, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="crit-weight">Weight within Category (%) *</Label>
+              <Input
+                id="crit-weight"
+                type="number"
+                min={0}
+                max={100}
+                placeholder="e.g. 40"
+                value={critForm.weight || ""}
+                onChange={(e) => setCritForm({ ...critForm, weight: Number(e.target.value) })}
+                required
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                type="number"
-                label="Min Score *"
-                value={editCriterionData.minScore}
-                onChange={(e) => setEditCriterionData({ ...editCriterionData, minScore: Number(e.target.value) })}
-                required
-              />
-              <Input
-                type="number"
-                label="Max Score *"
-                value={editCriterionData.maxScore}
-                onChange={(e) => setEditCriterionData({ ...editCriterionData, maxScore: Number(e.target.value) })}
-                required
-              />
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="crit-min-score">Min Score *</Label>
+                <Input
+                  id="crit-min-score"
+                  type="number"
+                  value={critForm.minScore}
+                  onChange={(e) => setCritForm({ ...critForm, minScore: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="crit-max-score">Max Score *</Label>
+                <Input
+                  id="crit-max-score"
+                  type="number"
+                  value={critForm.maxScore}
+                  onChange={(e) => setCritForm({ ...critForm, maxScore: Number(e.target.value) })}
+                  required
+                />
+              </div>
             </div>
-            <div className="flex gap-2 justify-end mt-4">
-              <Button type="button" variant="ghost" onClick={() => setEditCriterionData(null)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
-            </div>
+            <Button type="submit" className="w-full py-3">Add Criterion</Button>
           </form>
-        )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Criterion Dialog */}
+      <Dialog open={!!editCriterionData} onOpenChange={(open) => { if (!open) setEditCriterionData(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Criterion</DialogTitle>
+          </DialogHeader>
+          {editCriterionData && (
+            <form onSubmit={updateCriterion} className="space-y-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-crit-name">Name *</Label>
+                <Input
+                  id="edit-crit-name"
+                  value={editCriterionData.name}
+                  onChange={(e) => setEditCriterionData({ ...editCriterionData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-crit-weight">Weight within Category (%) *</Label>
+                <Input
+                  id="edit-crit-weight"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={editCriterionData.weight}
+                  onChange={(e) => setEditCriterionData({ ...editCriterionData, weight: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-crit-min-score">Min Score *</Label>
+                  <Input
+                    id="edit-crit-min-score"
+                    type="number"
+                    value={editCriterionData.minScore}
+                    onChange={(e) => setEditCriterionData({ ...editCriterionData, minScore: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-crit-max-score">Max Score *</Label>
+                  <Input
+                    id="edit-crit-max-score"
+                    type="number"
+                    value={editCriterionData.maxScore}
+                    onChange={(e) => setEditCriterionData({ ...editCriterionData, maxScore: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end mt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditCriterionData(null)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

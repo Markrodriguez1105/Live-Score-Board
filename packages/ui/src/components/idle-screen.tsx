@@ -57,7 +57,7 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
           <img
             src={logoUrl}
             alt="Event Logo"
-            className="relative z-10 max-w-[280px] md:max-w-[400px] object-contain drop-shadow-2xl"
+            className="relative z-10 max-w-70 md:max-w-100 object-contain drop-shadow-2xl"
             style={{
               animation: "float 6s ease-in-out infinite",
             }}

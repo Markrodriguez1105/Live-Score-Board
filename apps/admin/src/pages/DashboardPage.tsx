@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from "@pageant/ui";
 import type { Pageant } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@pageant/ui/components/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 
 const API_BASE = "/api";
 
@@ -60,7 +64,6 @@ export function DashboardPage() {
           <Button
             id="create-pageant-btn"
             onClick={() => setShowCreate(true)}
-            variant="primary"
           >
             + New Pageant
           </Button>
@@ -80,7 +83,6 @@ export function DashboardPage() {
             <p className="text-white/40 mb-6">Create your first pageant to get started</p>
             <Button
               onClick={() => setShowCreate(true)}
-              variant="primary"
               size="lg"
             >
               Create Pageant
@@ -119,47 +121,62 @@ export function DashboardPage() {
         )}
       </main>
 
-      {/* Create Modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Pageant">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <Input
-            label="Name *"
-            placeholder="e.g. Miss Universe 2026"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              type="date"
-              label="Date *"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              required
-            />
-            <Input
-              label="Venue *"
-              placeholder="e.g. Arena Hall"
-              value={form.venue}
-              onChange={(e) => setForm({ ...form, venue: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Description</label>
-            <textarea
-              placeholder="Provide a description..."
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={2}
-              className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
-            />
-          </div>
-          <Button type="submit" variant="primary" className="w-full py-3 mt-2">
-            Create Pageant
-          </Button>
-        </form>
-      </Modal>
+      {/* Create Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Pageant</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="create-name">Name *</Label>
+              <Input
+                id="create-name"
+                placeholder="e.g. Miss Universe 2026"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="create-date">Date *</Label>
+                <Input
+                  id="create-date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="create-venue">Venue *</Label>
+                <Input
+                  id="create-venue"
+                  placeholder="e.g. Arena Hall"
+                  value={form.venue}
+                  onChange={(e) => setForm({ ...form, venue: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="create-description">Description</Label>
+              <textarea
+                id="create-description"
+                placeholder="Provide a description..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={2}
+                className="w-full bg-surface-primary border border-border-default rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:border-pageant-purple focus:ring-pageant-purple/20 resize-none transition-all"
+              />
+            </div>
+            <Button type="submit" className="w-full py-3 mt-2">
+              Create Pageant
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -57,7 +57,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
       <img
         src={imgSrc}
         alt={name}
-        className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10 flex-shrink-0"
+        className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10 shrink-0"
       />
 
       {/* Info */}

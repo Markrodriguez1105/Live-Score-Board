@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { Button, Card, CardContent } from "@pageant/ui";
+import { Button } from "@pageant/ui/components/button";
+import { Card } from "@pageant/ui/components/card";
+import { CardContent } from "@pageant/ui/components/card";
 import type { Candidate, Category, PresentationState } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -82,21 +84,21 @@ export function LiveControlPage() {
           <CardContent className="p-5 flex flex-wrap items-center gap-3">
             <Button
               onClick={() => updatePresentation({ isIdle: !presentation?.isIdle })}
-              variant={presentation?.isIdle ? "primary" : "secondary"}
+              variant={presentation?.isIdle ? "default" : "secondary"}
             >
               {presentation?.isIdle ? "▶ Go Live" : "⏸ Set Idle"}
             </Button>
 
             <Button
               onClick={() => updatePresentation({ showScores: !presentation?.showScores })}
-              variant={presentation?.showScores ? "gold" : "outline"}
+              variant={presentation?.showScores ? "secondary" : "outline"}
             >
               {presentation?.showScores ? "🙈 Hide Scores" : "👁 Reveal Scores"}
             </Button>
 
             <Button
               onClick={() => updatePresentation({ showJudgeBreakdown: !presentation?.showJudgeBreakdown })}
-              variant={presentation?.showJudgeBreakdown ? "primary" : "outline"}
+              variant={presentation?.showJudgeBreakdown ? "default" : "outline"}
             >
               {presentation?.showJudgeBreakdown ? "Hide Judge Details" : "Show Judge Details"}
             </Button>
@@ -114,8 +116,8 @@ export function LiveControlPage() {
                     key={cat.id}
                     onClick={() => updatePresentation({ activeCategoryId: cat.id })}
                     className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${presentation?.activeCategoryId === cat.id
-                        ? "bg-pageant-purple text-white font-bold border-pageant-purple shadow-lg shadow-pageant-purple/10"
-                        : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10"
+                      ? "bg-pageant-purple text-white font-bold border-pageant-purple shadow-lg shadow-pageant-purple/10"
+                      : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10"
                       }`}
                   >
                     {cat.name}
@@ -138,8 +140,8 @@ export function LiveControlPage() {
                     key={c.id}
                     onClick={() => updatePresentation({ activeCandidateId: c.id, isIdle: false })}
                     className={`relative p-3 rounded-xl text-center transition-all border ${presentation?.activeCandidateId === c.id
-                        ? "bg-pageant-purple/10 border-pageant-purple/60 shadow-lg"
-                        : "bg-white/5 border-white/5 hover:bg-white/10"
+                      ? "bg-pageant-purple/10 border-pageant-purple/60 shadow-lg"
+                      : "bg-white/5 border-white/5 hover:bg-white/10"
                       }`}
                   >
                     <img

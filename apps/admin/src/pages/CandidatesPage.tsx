@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Modal, Button, Input, Card } from "@pageant/ui";
 import type { Candidate } from "@pageant/types";
+import { Button } from "@pageant/ui/components/button";
+import { Card } from "@pageant/ui/components/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
+import { Input } from "@pageant/ui/components/input";
+import { Label } from "@pageant/ui/components/label";
 
 const API_BASE = "/api";
 
@@ -68,7 +72,7 @@ export function CandidatesPage() {
             <h1 className="text-lg font-bold text-white">Candidates</h1>
             <span className="text-xs text-white/30">{candidates.length} total</span>
           </div>
-          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setShowCreate(true); }} variant="primary">
+          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setShowCreate(true); }} >
             + Add Candidate
           </Button>
         </div>
@@ -106,7 +110,7 @@ export function CandidatesPage() {
                     <Button variant="outline" size="sm" onClick={() => setEditCandidateData(c)} className="text-xs py-1 px-2.5">
                       Edit
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => deleteCandidate(c.id)} className="text-xs py-1 px-2.5">
+                    <Button variant="destructive" size="sm" onClick={() => deleteCandidate(c.id)} className="text-xs py-1 px-2.5">
                       ✕
                     </Button>
                   </div>
@@ -117,53 +121,75 @@ export function CandidatesPage() {
         )}
       </main>
 
-      {/* Add Candidate Modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Add Candidate">
-        <form onSubmit={createCandidate} className="space-y-4">
-          <Input
-            label="Name *"
-            placeholder="e.g. Candidate Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <Input
-            type="number"
-            min={1}
-            label="Candidate Number *"
-            value={form.candidateNumber}
-            onChange={(e) => setForm({ ...form, candidateNumber: Number(e.target.value) })}
-            required
-          />
-          <Button type="submit" variant="primary" className="w-full py-3">Add Candidate</Button>
-        </form>
-      </Modal>
-
-      {/* Edit Candidate Modal */}
-      <Modal isOpen={!!editCandidateData} onClose={() => setEditCandidateData(null)} title="Edit Candidate">
-        {editCandidateData && (
-          <form onSubmit={updateCandidate} className="space-y-4">
-            <Input
-              label="Name *"
-              value={editCandidateData.name}
-              onChange={(e) => setEditCandidateData({ ...editCandidateData, name: e.target.value })}
-              required
-            />
-            <Input
-              type="number"
-              min={1}
-              label="Candidate Number *"
-              value={editCandidateData.candidateNumber}
-              onChange={(e) => setEditCandidateData({ ...editCandidateData, candidateNumber: Number(e.target.value) })}
-              required
-            />
-            <div className="flex gap-2 justify-end mt-4">
-              <Button type="button" variant="ghost" onClick={() => setEditCandidateData(null)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
+      {/* Add Candidate Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Candidate</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createCandidate} className="space-y-4">
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="candidate-name">Name *</Label>
+              <Input
+                id="candidate-name"
+                placeholder="e.g. Candidate Name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
             </div>
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="candidate-number">Candidate Number *</Label>
+              <Input
+                id="candidate-number"
+                type="number"
+                min={1}
+                value={form.candidateNumber}
+                onChange={(e) => setForm({ ...form, candidateNumber: Number(e.target.value) })}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full py-3">Add Candidate</Button>
           </form>
-        )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Candidate Dialog */}
+      <Dialog open={!!editCandidateData} onOpenChange={(open) => { if (!open) setEditCandidateData(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Candidate</DialogTitle>
+          </DialogHeader>
+          {editCandidateData && (
+            <form onSubmit={updateCandidate} className="space-y-4">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-candidate-name">Name *</Label>
+                <Input
+                  id="edit-candidate-name"
+                  value={editCandidateData.name}
+                  onChange={(e) => setEditCandidateData({ ...editCandidateData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-candidate-number">Candidate Number *</Label>
+                <Input
+                  id="edit-candidate-number"
+                  type="number"
+                  min={1}
+                  value={editCandidateData.candidateNumber}
+                  onChange={(e) => setEditCandidateData({ ...editCandidateData, candidateNumber: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="flex gap-2 justify-end mt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditCandidateData(null)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

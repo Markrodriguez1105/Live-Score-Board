@@ -43,7 +43,7 @@ presentationRoutes.get(
   "/pageants/:pageantId/presentation",
   async (req, res) => {
     try {
-      const state = await PresentationQueries.get(req.params.pageantId);
+      const state = await PresentationQueries.get(req.params.pageantId as string);
       if (!state) {
         res
           .status(404)
@@ -64,7 +64,7 @@ presentationRoutes.put(
   async (req, res) => {
     try {
       const state = await PresentationQueries.update(
-        req.params.pageantId,
+        req.params.pageantId as string,
         req.body
       );
       if (!state) {

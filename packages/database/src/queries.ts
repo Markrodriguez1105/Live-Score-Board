@@ -26,11 +26,23 @@ import type {
 // === Helpers ===
 
 function toPageant(row: RowDataPacket): Pageant {
+  let dateStr = "";
+  if (row.date) {
+    if (row.date instanceof Date) {
+      const year = row.date.getFullYear();
+      const month = String(row.date.getMonth() + 1).padStart(2, "0");
+      const day = String(row.date.getDate()).padStart(2, "0");
+      dateStr = `${year}-${month}-${day}`;
+    } else {
+      dateStr = String(row.date).split("T")[0].split(" ")[0];
+    }
+  }
+
   return {
     id: row.id,
     name: row.name,
     description: row.description ?? undefined,
-    date: row.date,
+    date: dateStr,
     venue: row.venue,
     logoUrl: row.logo_url,
     status: row.status,
@@ -80,7 +92,7 @@ function toJudge(row: RowDataPacket): Judge {
   };
 }
 
-function toScore(row: RowDataPacket): Score & { judgeName?: string } {
+function toScore(row: RowDataPacket): Score & { judgeName?: string; criteriaWeight?: number; criteriaMaxScore?: number } {
   return {
     id: row.id,
     judgeId: row.judge_id,
@@ -89,6 +101,8 @@ function toScore(row: RowDataPacket): Score & { judgeName?: string } {
     value: Number(row.value),
     submittedAt: row.submitted_at,
     judgeName: row.judge_name ?? undefined,
+    criteriaWeight: row.criteria_weight !== undefined ? Number(row.criteria_weight) : undefined,
+    criteriaMaxScore: row.criteria_max_score !== undefined ? Number(row.criteria_max_score) : undefined,
   };
 }
 
@@ -120,9 +134,10 @@ export const PageantQueries = {
 
   async create(data: CreatePageant): Promise<Pageant> {
     const id = uuidv4();
+    const cleanDate = data.date ? String(data.date).split("T")[0].split(" ")[0] : "";
     await execute(
       "INSERT INTO pageants (id, name, description, date, venue, logo_url) VALUES (?, ?, ?, ?, ?, ?)",
-      [id, data.name, data.description ?? null, data.date, data.venue, data.logoUrl]
+      [id, data.name, data.description ?? null, cleanDate, data.venue, data.logoUrl]
     );
     // Also create presentation_state row
     await execute(
@@ -138,7 +153,10 @@ export const PageantQueries = {
 
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
     if (data.description !== undefined) { fields.push("description = ?"); values.push(data.description); }
-    if (data.date !== undefined) { fields.push("date = ?"); values.push(data.date); }
+    if (data.date !== undefined) {
+      fields.push("date = ?");
+      values.push(data.date ? String(data.date).split("T")[0].split(" ")[0] : "");
+    }
     if (data.venue !== undefined) { fields.push("venue = ?"); values.push(data.venue); }
     if (data.logoUrl !== undefined) { fields.push("logo_url = ?"); values.push(data.logoUrl); }
     if (data.status !== undefined) { fields.push("status = ?"); values.push(data.status); }
@@ -380,7 +398,7 @@ export const ScoreQueries = {
     categoryId: string
   ): Promise<Score[]> {
     const rows = await query(
-      `SELECT s.*, j.name as judge_name FROM scores s
+      `SELECT s.*, j.name as judge_name, cr.weight as criteria_weight, cr.max_score as criteria_max_score FROM scores s
        JOIN criteria cr ON s.criteria_id = cr.id
        JOIN judges j ON s.judge_id = j.id
        WHERE s.candidate_id = ? AND cr.category_id = ?`,
@@ -415,8 +433,8 @@ export const ScoreQueries = {
       await execute(
         `INSERT INTO scores (id, judge_id, candidate_id, criteria_id, value)
          VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE value = VALUES(value), submitted_at = CURRENT_TIMESTAMP`,
-        [id, judgeId, candidateId, s.criteriaId, s.value]
+         ON DUPLICATE KEY UPDATE value = ?, submitted_at = CURRENT_TIMESTAMP`,
+        [id, judgeId, candidateId, s.criteriaId, s.value, s.value]
       );
       // Fetch the actual saved score
       const rows = await query(
@@ -438,14 +456,29 @@ export const ScoreQueries = {
     await execute(
       `INSERT INTO scores (id, judge_id, candidate_id, criteria_id, value)
        VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE value = VALUES(value), submitted_at = CURRENT_TIMESTAMP`,
-      [id, judgeId, candidateId, criteriaId, value]
+       ON DUPLICATE KEY UPDATE value = ?, submitted_at = CURRENT_TIMESTAMP`,
+      [id, judgeId, candidateId, criteriaId, value, value]
     );
     const rows = await query(
       "SELECT * FROM scores WHERE judge_id = ? AND candidate_id = ? AND criteria_id = ?",
       [judgeId, candidateId, criteriaId]
     );
     return rows.length > 0 ? toScore(rows[0]) : null;
+  },
+
+  async deleteByJudgeCandidateCategory(
+    judgeId: string,
+    candidateId: string,
+    categoryId: string
+  ): Promise<boolean> {
+    await execute(
+      `DELETE FROM scores
+       WHERE judge_id = ? AND candidate_id = ? AND criteria_id IN (
+         SELECT id FROM criteria WHERE category_id = ?
+       )`,
+      [judgeId, candidateId, categoryId]
+    );
+    return true;
   },
 
   /**

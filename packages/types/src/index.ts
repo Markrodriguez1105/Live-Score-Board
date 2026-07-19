@@ -153,12 +153,23 @@ export interface ServerToClientEvents {
     categoryId: string;
     candidateId: string;
   }) => void;
+  "judge:assistance-alert": (payload: {
+    judgeId: string;
+    judgeName: string;
+    pageantId?: string;
+    timestamp?: string;
+  }) => void;
 }
 
 export interface ClientToServerEvents {
   "judge:submit-score": (payload: ScoreSubmission) => void;
   "admin:set-presentation": (state: Partial<PresentationState>) => void;
   "tabulator:override-score": (payload: ScoreOverride) => void;
+  "judge:request-assistance": (payload: {
+    judgeId: string;
+    judgeName: string;
+    pageantId?: string;
+  }) => void;
 }
 
 // === API Response Wrappers ===

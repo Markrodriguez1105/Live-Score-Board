@@ -55,7 +55,7 @@ judgeRoutes.get(
   requireAdmin,
   async (req, res) => {
     try {
-      const judges = await JudgeQueries.getByPageantId(req.params.pageantId);
+      const judges = await JudgeQueries.getByPageantId(req.params.pageantId as string);
       res.json({ success: true, data: judges });
     } catch (err) {
       res.status(500).json({ success: false, error: String(err) });
@@ -80,7 +80,7 @@ judgeRoutes.post(
 
       // Check PIN uniqueness within the pageant
       const existing = await JudgeQueries.getByPin(pin);
-      if (existing && existing.pageantId === req.params.pageantId) {
+      if (existing && existing.pageantId === (req.params.pageantId as string)) {
         res.status(409).json({
           success: false,
           error: "A judge with this PIN already exists in this pageant",
@@ -88,7 +88,7 @@ judgeRoutes.post(
         return;
       }
 
-      const judge = await JudgeQueries.create(req.params.pageantId, {
+      const judge = await JudgeQueries.create(req.params.pageantId as string, {
         name,
         pin,
       });
@@ -106,7 +106,7 @@ judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
 
     if (pin) {
       const existing = await JudgeQueries.getByPin(pin);
-      if (existing && existing.id !== req.params.id) {
+      if (existing && existing.id !== (req.params.id as string)) {
         res.status(409).json({
           success: false,
           error: "A judge with this PIN already exists",
@@ -115,7 +115,7 @@ judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
       }
     }
 
-    const judge = await JudgeQueries.update(req.params.id, { name, pin });
+    const judge = await JudgeQueries.update(req.params.id as string, { name, pin });
     if (!judge) {
       res.status(404).json({ success: false, error: "Judge not found" });
       return;
@@ -129,7 +129,7 @@ judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
 // Delete judge
 judgeRoutes.delete("/judges/:id", requireAdmin, async (req, res) => {
   try {
-    const deleted = await JudgeQueries.delete(req.params.id);
+    const deleted = await JudgeQueries.delete(req.params.id as string);
     if (!deleted) {
       res.status(404).json({ success: false, error: "Judge not found" });
       return;

@@ -15,7 +15,7 @@ candidateRoutes.get(
   async (req, res) => {
     try {
       const candidates = await CandidateQueries.getByPageantId(
-        req.params.pageantId
+        req.params.pageantId as string
       );
       res.json({ success: true, data: candidates });
     } catch (err) {
@@ -27,7 +27,7 @@ candidateRoutes.get(
 // Get single candidate
 candidateRoutes.get("/candidates/:id", async (req, res) => {
   try {
-    const candidate = await CandidateQueries.getById(req.params.id);
+    const candidate = await CandidateQueries.getById(req.params.id as string);
     if (!candidate) {
       res.status(404).json({ success: false, error: "Candidate not found" });
       return;
@@ -52,7 +52,7 @@ candidateRoutes.post(
         });
         return;
       }
-      const candidate = await CandidateQueries.create(req.params.pageantId, {
+      const candidate = await CandidateQueries.create(req.params.pageantId as string, {
         name,
         candidateNumber,
       });
@@ -66,7 +66,7 @@ candidateRoutes.post(
 // Update candidate
 candidateRoutes.put("/candidates/:id", requireAdmin, async (req, res) => {
   try {
-    const candidate = await CandidateQueries.update(req.params.id, req.body);
+    const candidate = await CandidateQueries.update(req.params.id as string, req.body);
     if (!candidate) {
       res.status(404).json({ success: false, error: "Candidate not found" });
       return;
@@ -80,7 +80,7 @@ candidateRoutes.put("/candidates/:id", requireAdmin, async (req, res) => {
 // Delete candidate
 candidateRoutes.delete("/candidates/:id", requireAdmin, async (req, res) => {
   try {
-    const deleted = await CandidateQueries.delete(req.params.id);
+    const deleted = await CandidateQueries.delete(req.params.id as string);
     if (!deleted) {
       res.status(404).json({ success: false, error: "Candidate not found" });
       return;
@@ -103,7 +103,7 @@ candidateRoutes.post(
         return;
       }
       const photoUrl = `/uploads/${req.file.filename}`;
-      const candidate = await CandidateQueries.update(req.params.id, {
+      const candidate = await CandidateQueries.update(req.params.id as string, {
         photoUrl,
       });
       res.json({ success: true, data: candidate });

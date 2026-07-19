@@ -16,7 +16,7 @@ categoryRoutes.get(
   async (req, res) => {
     try {
       const categories = await CategoryQueries.getWithCriteria(
-        req.params.pageantId
+        req.params.pageantId as string
       );
       res.json({ success: true, data: categories });
     } catch (err) {
@@ -39,7 +39,7 @@ categoryRoutes.post(
         });
         return;
       }
-      const category = await CategoryQueries.create(req.params.pageantId, {
+      const category = await CategoryQueries.create(req.params.pageantId as string, {
         name,
         order: order ?? 0,
         weight,
@@ -54,7 +54,7 @@ categoryRoutes.post(
 // Update category
 categoryRoutes.put("/categories/:id", requireAdmin, async (req, res) => {
   try {
-    const category = await CategoryQueries.update(req.params.id, req.body);
+    const category = await CategoryQueries.update(req.params.id as string, req.body);
     if (!category) {
       res.status(404).json({ success: false, error: "Category not found" });
       return;
@@ -68,7 +68,7 @@ categoryRoutes.put("/categories/:id", requireAdmin, async (req, res) => {
 // Delete category
 categoryRoutes.delete("/categories/:id", requireAdmin, async (req, res) => {
   try {
-    const deleted = await CategoryQueries.delete(req.params.id);
+    const deleted = await CategoryQueries.delete(req.params.id as string);
     if (!deleted) {
       res.status(404).json({ success: false, error: "Category not found" });
       return;
@@ -87,7 +87,7 @@ categoryRoutes.get(
   async (req, res) => {
     try {
       const criteria = await CriteriaQueries.getByCategoryId(
-        req.params.categoryId
+        req.params.categoryId as string
       );
       res.json({ success: true, data: criteria });
     } catch (err) {
@@ -117,7 +117,7 @@ categoryRoutes.post(
         });
         return;
       }
-      const criterion = await CriteriaQueries.create(req.params.categoryId, {
+      const criterion = await CriteriaQueries.create(req.params.categoryId as string, {
         name,
         weight,
         minScore,
@@ -134,7 +134,7 @@ categoryRoutes.post(
 // Update criterion
 categoryRoutes.put("/criteria/:id", requireAdmin, async (req, res) => {
   try {
-    const criterion = await CriteriaQueries.update(req.params.id, req.body);
+    const criterion = await CriteriaQueries.update(req.params.id as string, req.body);
     if (!criterion) {
       res.status(404).json({ success: false, error: "Criterion not found" });
       return;
@@ -148,7 +148,7 @@ categoryRoutes.put("/criteria/:id", requireAdmin, async (req, res) => {
 // Delete criterion
 categoryRoutes.delete("/criteria/:id", requireAdmin, async (req, res) => {
   try {
-    const deleted = await CriteriaQueries.delete(req.params.id);
+    const deleted = await CriteriaQueries.delete(req.params.id as string);
     if (!deleted) {
       res.status(404).json({ success: false, error: "Criterion not found" });
       return;

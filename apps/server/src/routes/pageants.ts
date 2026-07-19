@@ -36,7 +36,7 @@ pageantRoutes.get("/", requireAdmin, async (_req, res) => {
 // Get single pageant
 pageantRoutes.get("/:id", requireAdmin, async (req, res) => {
   try {
-    const pageant = await PageantQueries.getById(req.params.id);
+    const pageant = await PageantQueries.getById(req.params.id as string);
     if (!pageant) {
       res.status(404).json({ success: false, error: "Pageant not found" });
       return;
@@ -58,10 +58,11 @@ pageantRoutes.post("/", requireAdmin, async (req, res) => {
       });
       return;
     }
+    const cleanDate = String(date).split("T")[0].split(" ")[0];
     const pageant = await PageantQueries.create({
       name,
       description,
-      date,
+      date: cleanDate,
       venue,
       logoUrl,
     });
@@ -74,7 +75,11 @@ pageantRoutes.post("/", requireAdmin, async (req, res) => {
 // Update pageant
 pageantRoutes.put("/:id", requireAdmin, async (req, res) => {
   try {
-    const pageant = await PageantQueries.update(req.params.id, req.body);
+    const payload = { ...req.body };
+    if (payload.date) {
+      payload.date = String(payload.date).split("T")[0].split(" ")[0];
+    }
+    const pageant = await PageantQueries.update(req.params.id as string, payload);
     if (!pageant) {
       res.status(404).json({ success: false, error: "Pageant not found" });
       return;
@@ -88,7 +93,7 @@ pageantRoutes.put("/:id", requireAdmin, async (req, res) => {
 // Delete pageant
 pageantRoutes.delete("/:id", requireAdmin, async (req, res) => {
   try {
-    const deleted = await PageantQueries.delete(req.params.id);
+    const deleted = await PageantQueries.delete(req.params.id as string);
     if (!deleted) {
       res.status(404).json({ success: false, error: "Pageant not found" });
       return;
@@ -111,7 +116,7 @@ pageantRoutes.post(
         return;
       }
       const logoUrl = `/uploads/${req.file.filename}`;
-      const pageant = await PageantQueries.update(req.params.id, { logoUrl });
+      const pageant = await PageantQueries.update(req.params.id as string, { logoUrl });
       res.json({ success: true, data: pageant });
     } catch (err) {
       res.status(500).json({ success: false, error: String(err) });

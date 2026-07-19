@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Plus, Trash2, AlertTriangle, Camera, Upload, Edit, Edit2, Crop } from "lucide-react";
+import { ImageCropModal } from "../components/ImageCropModal";
 import type { Candidate } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -16,7 +17,14 @@ export function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [editCandidateData, setEditCandidateData] = useState<Candidate | null>(null);
+  const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<Candidate | null>(null);
+  const [deletingCand, setDeletingCand] = useState(false);
   const [form, setForm] = useState({ name: "", candidateNumber: 1 });
+  const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null);
+  const [createPhotoPreview, setCreatePhotoPreview] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropContext, setCropContext] = useState<"add" | "edit">("add");
 
   const fetchCandidates = async () => {
     const res = await fetch(`${API_BASE}/pageants/${id}/candidates`, { credentials: "include" });
@@ -26,15 +34,67 @@ export function CandidatesPage() {
 
   useEffect(() => { fetchCandidates(); }, [id]);
 
+  const loadImageAsDataUrl = async (url: string): Promise<string> => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return url;
+    }
+  };
+
+  const startImageCrop = async (source: File | string | undefined, context: "add" | "edit", candidate?: Candidate) => {
+    if (!source) return;
+    setCropContext(context);
+    if (candidate) {
+      setEditCandidateData(candidate);
+    }
+    if (typeof source === "string") {
+      const dataUrl = await loadImageAsDataUrl(source);
+      setCropImageSrc(dataUrl);
+      setCropModalOpen(true);
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCropImageSrc(reader.result as string);
+        setCropModalOpen(true);
+      };
+      reader.readAsDataURL(source);
+    }
+  };
+
+  const handleCropComplete = async (croppedFile: File, previewUrl: string) => {
+    if (cropContext === "add") {
+      setCreatePhotoFile(croppedFile);
+      setCreatePhotoPreview(previewUrl);
+    } else if (cropContext === "edit" && editCandidateData) {
+      await uploadPhoto(editCandidateData.id, croppedFile);
+    }
+  };
+
   const createCandidate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${API_BASE}/pageants/${id}/candidates`, {
+    const res = await fetch(`${API_BASE}/pageants/${id}/candidates`, {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
       body: JSON.stringify(form),
     });
-    setShowCreate(false);
-    setForm({ name: "", candidateNumber: candidates.length + 2 });
-    fetchCandidates();
+    const data = await res.json();
+    if (data.success && data.data) {
+      if (createPhotoFile) {
+        await uploadPhoto(data.data.id, createPhotoFile);
+      }
+      setShowCreate(false);
+      setForm({ name: "", candidateNumber: candidates.length + 2 });
+      setCreatePhotoFile(null);
+      setCreatePhotoPreview(null);
+      fetchCandidates();
+    }
   };
 
   const updateCandidate = async (e: React.FormEvent) => {
@@ -48,17 +108,31 @@ export function CandidatesPage() {
     fetchCandidates();
   };
 
-  const deleteCandidate = async (cId: string) => {
-    if (!confirm("Delete this candidate?")) return;
-    await fetch(`${API_BASE}/candidates/${cId}`, { method: "DELETE", credentials: "include" });
-    fetchCandidates();
+  const handleDeleteCandidate = async () => {
+    if (!deleteCandidateTarget) return;
+    setDeletingCand(true);
+    try {
+      await fetch(`${API_BASE}/candidates/${deleteCandidateTarget.id}`, { method: "DELETE", credentials: "include" });
+      setDeleteCandidateTarget(null);
+      fetchCandidates();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingCand(false);
+    }
   };
 
   const uploadPhoto = async (cId: string, file: File) => {
     const fd = new FormData();
     fd.append("photo", file);
-    await fetch(`${API_BASE}/candidates/${cId}/photo`, { method: "POST", credentials: "include", body: fd });
-    fetchCandidates();
+    const res = await fetch(`${API_BASE}/candidates/${cId}/photo`, { method: "POST", credentials: "include", body: fd });
+    const data = await res.json();
+    if (data.success) {
+      if (editCandidateData?.id === cId) {
+        setEditCandidateData((prev) => (prev ? { ...prev, photoUrl: data.data.photoUrl } : null));
+      }
+      fetchCandidates();
+    }
   };
 
   const getFallback = (name: string) =>
@@ -75,7 +149,7 @@ export function CandidatesPage() {
             <h1 className="text-lg font-bold text-foreground">Candidates</h1>
             <span className="text-xs text-muted-foreground">{candidates.length} total</span>
           </div>
-          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setShowCreate(true); }} >
+          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setCreatePhotoFile(null); setCreatePhotoPreview(null); setShowCreate(true); }} >
             <Plus className="w-4 h-4 mr-1.5" /> Add Candidate
           </Button>
         </div>
@@ -90,30 +164,26 @@ export function CandidatesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {candidates.map((c) => (
-              <Card key={c.id} className="p-4 group hover:border-primary/30 transition-all flex flex-col justify-between">
+              <Card key={c.id} className="group hover:border-primary/30 transition-all flex flex-col justify-between p-0 rounded-xl">
                 {/* Photo */}
-                <div className="relative mb-3">
-                  <img src={c.photoUrl || getFallback(c.name)} alt={c.name} className="w-full aspect-square object-cover rounded-xl bg-secondary" />
-                  <label className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <span className="text-primary-foreground text-xs font-bold bg-primary px-3 py-1.5 rounded-lg shadow-lg">Upload Photo</span>
-                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadPhoto(c.id, e.target.files[0])} className="hidden" />
-                  </label>
-                  <div className="absolute top-2 left-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground shadow-lg">
+                <div className="relative">
+                  <img src={c.photoUrl || getFallback(c.name)} alt={c.name} className="w-full aspect-square object-cover bg-secondary" />
+                  <div className="absolute top-2 left-2 w-10 h-10 bg-black/20 border border-white rounded-xl flex items-center justify-center text-md font-bold shadow-lg">
                     {c.candidateNumber}
                   </div>
                 </div>
 
                 {/* Info */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between px-5 pb-3">
                   <div>
                     <h3 className="font-bold text-foreground text-sm truncate max-w-37.5">{c.name}</h3>
                     <p className="text-xs text-muted-foreground">Candidate #{c.candidateNumber}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => setEditCandidateData(c)} className="text-xs py-1 px-2.5">
-                      Edit
+                      <Edit2 />Edit
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => deleteCandidate(c.id)} className="text-xs py-1 px-2.5">
+                    <Button variant="destructive" size="sm" onClick={() => setDeleteCandidateTarget(c)} className="text-xs py-1 px-2.5">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -125,12 +195,44 @@ export function CandidatesPage() {
       </main>
 
       {/* Add Candidate Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) { setCreatePhotoFile(null); setCreatePhotoPreview(null); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add Candidate</DialogTitle>
           </DialogHeader>
           <form onSubmit={createCandidate} className="space-y-4">
+            {/* Candidate Photo Upload */}
+            <div className="flex flex-col items-center justify-center space-y-2 pb-2">
+              <div className="relative group w-28 h-28 shrink-0">
+                <img
+                  src={createPhotoPreview || getFallback(form.name || "New Candidate")}
+                  alt="Preview"
+                  className="w-28 h-28 rounded-2xl object-cover bg-secondary border border-border shadow-sm"
+                />
+                <label className="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                  <Camera className="w-6 h-6 text-white mb-1" />
+                  <span className="text-white text-[10px] font-bold">Choose & Crop</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => startImageCrop(e.target.files?.[0], "add")}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                  <Upload className="w-3.5 h-3.5" />
+                  {createPhotoFile ? "Change Photo" : "Upload Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => startImageCrop(e.target.files?.[0], "add")}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
             <div className="space-y-1.5 w-full">
               <Label htmlFor="candidate-name">Name *</Label>
               <Input
@@ -165,6 +267,49 @@ export function CandidatesPage() {
           </DialogHeader>
           {editCandidateData && (
             <form onSubmit={updateCandidate} className="space-y-4">
+              {/* Candidate Photo */}
+              <div className="flex flex-col items-center justify-center space-y-2 pb-2">
+                <div className="relative group w-28 h-28 shrink-0">
+                  <img
+                    src={editCandidateData.photoUrl || getFallback(editCandidateData.name)}
+                    alt={editCandidateData.name}
+                    className="w-28 h-28 rounded-2xl object-cover bg-secondary border border-border shadow-sm"
+                  />
+                  <label className="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                    <Camera className="w-6 h-6 text-white mb-1" />
+                    <span className="text-white text-[10px] font-bold">Crop & Adjust</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => startImageCrop(e.target.files?.[0], "edit")}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    Upload & Crop
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => startImageCrop(e.target.files?.[0], "edit")}
+                      className="hidden"
+                    />
+                  </label>
+                  {(editCandidateData.photoUrl || getFallback(editCandidateData.name)) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-[11px] h-7 px-2 gap-1"
+                      onClick={() => startImageCrop(editCandidateData.photoUrl || getFallback(editCandidateData.name), "edit", editCandidateData)}
+                    >
+                      <Crop className="w-3 h-3 text-primary" /> Align Image
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="space-y-1.5 w-full">
                 <Label htmlFor="edit-candidate-name">Name *</Label>
                 <Input
@@ -193,6 +338,58 @@ export function CandidatesPage() {
           )}
         </DialogContent>
       </Dialog>
+      {/* Delete Candidate Confirmation Dialog */}
+      <Dialog open={!!deleteCandidateTarget} onOpenChange={(open) => { if (!open) setDeleteCandidateTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">Delete Candidate</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {deleteCandidateTarget && (
+            <div className="py-2">
+              <p className="text-sm text-foreground">
+                Are you sure you want to delete <span className="font-bold">{deleteCandidateTarget.name}</span> (Candidate #{deleteCandidateTarget.candidateNumber})? All associated score records will be permanently removed.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeleteCandidateTarget(null)}
+              disabled={deletingCand}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingCand}
+              onClick={handleDeleteCandidate}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletingCand ? "Deleting..." : "Delete Candidate"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => setCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

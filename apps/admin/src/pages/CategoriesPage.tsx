@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Plus, X } from "lucide-react";
+import { ArrowLeft, ClipboardList, Plus, X, AlertTriangle, Trash2 } from "lucide-react";
 import type { CategoryWithCriteria, CreateCriteria, Category, Criteria } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -18,6 +18,10 @@ export function CategoriesPage() {
   const [showCritModal, setShowCritModal] = useState<string | null>(null);
   const [editCategoryData, setEditCategoryData] = useState<Category | null>(null);
   const [editCriterionData, setEditCriterionData] = useState<Criteria | null>(null);
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Category | null>(null);
+  const [deletingCat, setDeletingCat] = useState(false);
+  const [deleteCriterionTarget, setDeleteCriterionTarget] = useState<Criteria | null>(null);
+  const [deletingCrit, setDeletingCrit] = useState(false);
 
   const [catForm, setCatForm] = useState({ name: "", weight: 0, order: 0 });
   const [critForm, setCritForm] = useState<CreateCriteria>({ name: "", weight: 0, minScore: 10, maxScore: 20, order: 0 });
@@ -52,10 +56,18 @@ export function CategoriesPage() {
     fetchCategories();
   };
 
-  const deleteCategory = async (catId: string) => {
-    if (!confirm("Delete this category and all its criteria?")) return;
-    await fetch(`${API_BASE}/categories/${catId}`, { method: "DELETE", credentials: "include" });
-    fetchCategories();
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryTarget) return;
+    setDeletingCat(true);
+    try {
+      await fetch(`${API_BASE}/categories/${deleteCategoryTarget.id}`, { method: "DELETE", credentials: "include" });
+      setDeleteCategoryTarget(null);
+      fetchCategories();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingCat(false);
+    }
   };
 
   const createCriterion = async (e: React.FormEvent) => {
@@ -87,10 +99,18 @@ export function CategoriesPage() {
     fetchCategories();
   };
 
-  const deleteCriterion = async (critId: string) => {
-    if (!confirm("Delete this criterion?")) return;
-    await fetch(`${API_BASE}/criteria/${critId}`, { method: "DELETE", credentials: "include" });
-    fetchCategories();
+  const handleDeleteCriterion = async () => {
+    if (!deleteCriterionTarget) return;
+    setDeletingCrit(true);
+    try {
+      await fetch(`${API_BASE}/criteria/${deleteCriterionTarget.id}`, { method: "DELETE", credentials: "include" });
+      setDeleteCriterionTarget(null);
+      fetchCategories();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingCrit(false);
+    }
   };
 
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
@@ -140,7 +160,7 @@ export function CategoriesPage() {
                     <Button variant="secondary" size="sm" onClick={() => setEditCategoryData(cat)}>
                       Edit
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => deleteCategory(cat.id)}>
+                    <Button variant="destructive" size="sm" onClick={() => setDeleteCategoryTarget(cat)}>
                       Delete
                     </Button>
                   </div>
@@ -165,7 +185,7 @@ export function CategoriesPage() {
                             <Button variant="ghost" size="sm" onClick={() => setEditCriterionData(cr)} className="text-muted-foreground hover:text-foreground">
                               Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => deleteCriterion(cr.id)} className="text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="sm" onClick={() => setDeleteCriterionTarget(cr)} className="text-muted-foreground hover:text-destructive">
                               <X className="w-3.5 h-3.5" />
                             </Button>
                           </div>
@@ -370,6 +390,97 @@ export function CategoriesPage() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Delete Category Confirmation Dialog */}
+      <Dialog open={!!deleteCategoryTarget} onOpenChange={(open) => { if (!open) setDeleteCategoryTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">Delete Category</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {deleteCategoryTarget && (
+            <div className="py-2">
+              <p className="text-sm text-foreground">
+                Are you sure you want to delete <span className="font-bold">{deleteCategoryTarget.name}</span>? All associated criteria and scores will be permanently removed.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeleteCategoryTarget(null)}
+              disabled={deletingCat}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingCat}
+              onClick={handleDeleteCategory}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletingCat ? "Deleting..." : "Delete Category"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Criterion Confirmation Dialog */}
+      <Dialog open={!!deleteCriterionTarget} onOpenChange={(open) => { if (!open) setDeleteCriterionTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">Delete Criterion</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {deleteCriterionTarget && (
+            <div className="py-2">
+              <p className="text-sm text-foreground">
+                Are you sure you want to delete <span className="font-bold">{deleteCriterionTarget.name}</span>? All associated score records will be permanently removed.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeleteCriterionTarget(null)}
+              disabled={deletingCrit}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingCrit}
+              onClick={handleDeleteCriterion}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletingCrit ? "Deleting..." : "Delete Criterion"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -101,7 +101,7 @@ export async function initSchema(): Promise<void> {
         active_category_id VARCHAR(36),
         active_candidate_id VARCHAR(36),
         is_idle BOOLEAN NOT NULL DEFAULT TRUE,
-        show_scores BOOLEAN NOT NULL DEFAULT FALSE,
+        show_scores BOOLEAN NOT NULL DEFAULT TRUE,
         show_judge_breakdown BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (pageant_id) REFERENCES pageants(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, MapPin, ClipboardList, Users, Scale, Clapperboard, Trophy } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, ClipboardList, Users, Scale, Clapperboard, Trophy, AlertTriangle, Trash2 } from "lucide-react";
 import type { Pageant } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card, CardContent } from "@pageant/ui/components/card";
@@ -16,13 +16,17 @@ export function PageantDetailPage() {
   const [pageant, setPageant] = useState<Pageant | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", date: "", venue: "", description: "", status: "" as Pageant["status"] });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const fetchPageant = async () => {
     const res = await fetch(`${API_BASE}/pageants/${id}`, { credentials: "include" });
     const data = await res.json();
     if (data.success) {
-      setPageant(data.data);
-      setForm({ name: data.data.name, date: data.data.date, venue: data.data.venue, description: data.data.description || "", status: data.data.status });
+      const formattedDate = data.data.date ? String(data.data.date).split("T")[0].split(" ")[0] : "";
+      setPageant({ ...data.data, date: formattedDate });
+      setForm({ name: data.data.name, date: formattedDate, venue: data.data.venue, description: data.data.description || "", status: data.data.status });
     }
   };
 
@@ -41,9 +45,19 @@ export function PageantDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this pageant? This cannot be undone.")) return;
-    await fetch(`${API_BASE}/pageants/${id}`, { method: "DELETE", credentials: "include" });
-    navigate("/dashboard");
+    if (!pageant || confirmTitle !== pageant.name) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/pageants/${id}`, { method: "DELETE", credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        navigate("/dashboard");
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,12 +112,12 @@ export function PageantDetailPage() {
                 </div>
                 {pageant.description && <p className="text-sm text-muted-foreground mb-2">{pageant.description}</p>}
                 <div className="flex gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> {pageant.date}</span>
+                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> {pageant.date ? String(pageant.date).split("T")[0].split(" ")[0] : ""}</span>
                   <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-muted-foreground" /> {pageant.venue}</span>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit Details</Button>
-                  <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
+                  <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>Delete</Button>
                 </div>
               </div>
             </div>
@@ -118,12 +132,12 @@ export function PageantDetailPage() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="bg-card border border-border rounded-2xl p-5 transition-all group"
+                className="bg-card border p-5"
               >
-                <div className="mb-3 text-primary">
-                  <Icon className="w-8 h-8" />
+                <div className="flex items-center gap-2">
+                  <Icon />
+                  <h3 className="font-bold">{item.label}</h3>
                 </div>
-                <h3 className="font-bold text-foreground">{item.label}</h3>
               </Link>
             );
           })}
@@ -195,6 +209,69 @@ export function PageantDetailPage() {
               <Button type="submit">Save Changes</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+        setShowDeleteDialog(open);
+        if (!open) setConfirmTitle("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">Delete Pageant</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive/90 leading-relaxed">
+              This will permanently delete the pageant <span className="font-bold text-foreground underline">{pageant.name}</span>, including all associated categories, criteria, candidates, judges, and score records.
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-delete-name" className="text-xs text-muted-foreground">
+                To confirm, type <span className="font-bold text-foreground font-mono select-all">{pageant.name}</span> below:
+              </Label>
+              <Input
+                id="confirm-delete-name"
+                value={confirmTitle}
+                onChange={(e) => setConfirmTitle(e.target.value)}
+                placeholder={pageant.name}
+                className="font-mono text-sm"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setConfirmTitle("");
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={confirmTitle !== pageant.name || deleting}
+              onClick={handleDelete}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deleting ? "Deleting..." : "I understand, delete this pageant"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

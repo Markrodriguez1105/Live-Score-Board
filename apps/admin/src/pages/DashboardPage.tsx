@@ -113,7 +113,7 @@ export function DashboardPage() {
                 </CardHeader>
                 <CardContent className="py-4">
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> {p.date}</span>
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> {p.date ? String(p.date).split("T")[0].split(" ")[0] : ""}</span>
                     <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-muted-foreground" /> {p.venue}</span>
                   </div>
                 </CardContent>

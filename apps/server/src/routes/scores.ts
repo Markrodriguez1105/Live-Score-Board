@@ -2,7 +2,7 @@
 // Routes — Scores (Submit, Override, Results)
 // ============================================================
 
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import {
   ScoreQueries,
   CriteriaQueries,
@@ -53,6 +53,12 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
       scores
     );
 
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("score:update", { candidateId });
+      io.emit("scores:update", { candidateId });
+    }
+
     res.status(201).json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });
@@ -94,11 +100,54 @@ scoreRoutes.put("/scores/override", requireAdmin, async (req, res) => {
       value
     );
 
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("score:update", { candidateId, judgeId, criteriaId });
+      io.emit("scores:update", { candidateId, judgeId, criteriaId });
+    }
+
     res.json({ success: true, data: score });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });
   }
 });
+
+// ── Admin/Tabulator: Clear Score ─────────────────────────────
+
+const clearScoreHandler = async (req: Request, res: Response) => {
+  try {
+    const judgeId = (req.body?.judgeId || req.query?.judgeId) as string;
+    const candidateId = (req.body?.candidateId || req.query?.candidateId) as string;
+    const categoryId = (req.body?.categoryId || req.query?.categoryId) as string;
+
+    if (!judgeId || !candidateId || !categoryId) {
+      res.status(400).json({
+        success: false,
+        error: "judgeId, candidateId, and categoryId are required",
+      });
+      return;
+    }
+
+    await ScoreQueries.deleteByJudgeCandidateCategory(
+      judgeId,
+      candidateId,
+      categoryId
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("score:update", { candidateId, judgeId, categoryId });
+      io.emit("scores:update", { candidateId, judgeId, categoryId });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
+};
+
+scoreRoutes.post("/scores/clear", requireAdmin, clearScoreHandler);
+scoreRoutes.delete("/scores/clear", requireAdmin, clearScoreHandler);
 
 // ── Get Scores for Candidate + Category ──────────────────────
 
@@ -107,8 +156,8 @@ scoreRoutes.get(
   async (req, res) => {
     try {
       const scores = await ScoreQueries.getByCandidateAndCategory(
-        req.params.candidateId,
-        req.params.categoryId
+        req.params.candidateId as string,
+        req.params.categoryId as string
       );
       res.json({ success: true, data: scores });
     } catch (err) {
@@ -124,7 +173,7 @@ scoreRoutes.get(
   async (req, res) => {
     try {
       // Get the pageant ID from the candidate
-      const candidate = await CandidateQueries.getById(req.params.candidateId);
+      const candidate = await CandidateQueries.getById(req.params.candidateId as string);
       if (!candidate) {
         res.status(404).json({ success: false, error: "Candidate not found" });
         return;
@@ -134,8 +183,8 @@ scoreRoutes.get(
       const judgeIds = judges.map((j) => j.id);
 
       const statusMap = await ScoreQueries.getSubmissionStatus(
-        req.params.candidateId,
-        req.params.categoryId,
+        req.params.candidateId as string,
+        req.params.categoryId as string,
         judgeIds
       );
 
@@ -156,16 +205,11 @@ scoreRoutes.get(
 
 scoreRoutes.get("/pageants/:pageantId/results", async (req, res) => {
   try {
-    const rawScores = await ScoreQueries.getResultsByPageant(
-      req.params.pageantId
-    );
-    const candidates = await CandidateQueries.getByPageantId(
-      req.params.pageantId
-    );
-    const categories = await CategoryQueries.getWithCriteria(
-      req.params.pageantId
-    );
-    const judges = await JudgeQueries.getByPageantId(req.params.pageantId);
+    const pageantId = req.params.pageantId as string;
+    const rawScores = await ScoreQueries.getResultsByPageant(pageantId);
+    const candidates = await CandidateQueries.getByPageantId(pageantId);
+    const categories = await CategoryQueries.getWithCriteria(pageantId);
+    const judges = await JudgeQueries.getByPageantId(pageantId);
 
     res.json({
       success: true,

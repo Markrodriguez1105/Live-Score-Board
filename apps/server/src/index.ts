@@ -61,6 +61,18 @@ app.use(
 const uploadsPath = path.resolve(__dirname, "../../../uploads");
 app.use("/uploads", express.static(uploadsPath));
 
+// ── Socket.IO ────────────────────────────────────────────────
+
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+app.set("io", io);
+setupSocketHandlers(io);
+
 // ── API Routes ───────────────────────────────────────────────
 
 app.use("/api/pageants", pageantRoutes);
@@ -74,17 +86,6 @@ app.use("/api", presentationRoutes);
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
 });
-
-// ── Socket.IO ────────────────────────────────────────────────
-
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-
-setupSocketHandlers(io);
 
 // ── Database Init & Start ────────────────────────────────────
 

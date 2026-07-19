@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Scale, Plus, Dices, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Scale, Plus, Dices, Eye, EyeOff, Edit2, Trash2, AlertTriangle } from "lucide-react";
 import type { Judge } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -16,6 +16,8 @@ export function JudgesPage() {
   const [judges, setJudges] = useState<Judge[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [editJudgeData, setEditJudgeData] = useState<Judge | null>(null);
+  const [deleteJudgeTarget, setDeleteJudgeTarget] = useState<Judge | null>(null);
+  const [deletingJudge, setDeletingJudge] = useState(false);
   const [form, setForm] = useState({ name: "", pin: "" });
   const [showPins, setShowPins] = useState(false);
 
@@ -59,10 +61,18 @@ export function JudgesPage() {
     }
   };
 
-  const deleteJudge = async (jId: string) => {
-    if (!confirm("Remove this judge? Their scores will also be deleted.")) return;
-    await fetch(`${API_BASE}/judges/${jId}`, { method: "DELETE", credentials: "include" });
-    fetchJudges();
+  const handleDeleteJudge = async () => {
+    if (!deleteJudgeTarget) return;
+    setDeletingJudge(true);
+    try {
+      await fetch(`${API_BASE}/judges/${deleteJudgeTarget.id}`, { method: "DELETE", credentials: "include" });
+      setDeleteJudgeTarget(null);
+      fetchJudges();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingJudge(false);
+    }
   };
 
   const generatePin = () => {
@@ -113,31 +123,31 @@ export function JudgesPage() {
             <p>No judges yet. Add judges and assign PINs.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {judges.map((j, i) => (
-              <Card key={j.id} className="p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-sm">
+              <Card key={j.id} className="p-4 flex flex-col justify-between hover:border-primary/30 transition-all rounded-xl">
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
                     {i + 1}
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{j.name}</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-foreground text-sm truncate">{j.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-xs text-muted-foreground">PIN:</span>
                       {showPins ? (
-                        <span className="text-sm font-mono font-bold tracking-wider">{j.pin}</span>
+                        <span className="text-xs font-mono font-bold tracking-wider text-primary">{j.pin}</span>
                       ) : (
-                        <span className="text-sm text-muted-foreground/50">••••</span>
+                        <span className="text-xs text-muted-foreground/50 tracking-widest">••••</span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => setEditJudgeData(j)}>
-                    Edit
+                <div className="flex gap-2 justify-end border-t border-border pt-3 mt-1">
+                  <Button variant="outline" size="sm" onClick={() => setEditJudgeData(j)} className="text-xs py-1 px-2.5">
+                    <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => deleteJudge(j.id)} className="px-3">
-                    Delete
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteJudgeTarget(j)} className="text-xs py-1 px-2.5">
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </Card>
@@ -239,6 +249,51 @@ export function JudgesPage() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Delete Judge Confirmation Dialog */}
+      <Dialog open={!!deleteJudgeTarget} onOpenChange={(open) => { if (!open) setDeleteJudgeTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">Remove Judge</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {deleteJudgeTarget && (
+            <div className="py-2">
+              <p className="text-sm text-foreground">
+                Are you sure you want to remove <span className="font-bold">{deleteJudgeTarget.name}</span>? Their submitted scores will also be permanently deleted.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeleteJudgeTarget(null)}
+              disabled={deletingJudge}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingJudge}
+              onClick={handleDeleteJudge}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletingJudge ? "Removing..." : "Remove Judge"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

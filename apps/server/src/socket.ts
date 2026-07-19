@@ -137,6 +137,22 @@ export function setupSocketHandlers(io: PageantIO) {
       }
     });
 
+    // ── Judge: Request Assistance ─────────────────────────────
+    socket.on("judge:request-assistance", (payload) => {
+      try {
+        const alertData = {
+          ...payload,
+          timestamp: new Date().toISOString(),
+        };
+        io.emit("judge:assistance-alert", alertData);
+        console.log(
+          `[Socket] Assistance requested by Judge ${payload.judgeName} (${payload.judgeId})`
+        );
+      } catch (err) {
+        console.error("[Socket] Error processing assistance request:", err);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log(`[Socket] Disconnected: ${socket.id}`);
     });

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { Crown, Footprints, Check, Clock } from "lucide-react";
+import { Crown, Footprints, Check, Clock, CheckCircle2, RefreshCw, PhoneCall } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { toast } from "sonner";
@@ -28,13 +28,32 @@ export function ScoringPage() {
   const [scoreValues, setScoreValues] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [loading, setLoading] = useState(true);
+
+  const isInitialLoad = useRef(true);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Scored map (candidateId -> categoryId -> true)
   const [scoredMap, setScoredMap] = useState<Record<string, Record<string, boolean>>>({});
 
   const token = sessionStorage.getItem("judgeToken");
   const judgeInfo = JSON.parse(sessionStorage.getItem("judgeInfo") || "null");
+
+  const [assistancePopping, setAssistancePopping] = useState(false);
+
+  const handleRequestAssistance = () => {
+    if (!judgeInfo || !socket || assistancePopping) return;
+    socket.emit("judge:request-assistance", {
+      judgeId: judgeInfo.id,
+      judgeName: judgeInfo.name,
+      pageantId: judgeInfo.pageantId,
+    });
+    setAssistancePopping(true);
+    setTimeout(() => {
+      setAssistancePopping(false);
+    }, 2000);
+  };
 
   // Redirect if no token
   useEffect(() => {
@@ -96,29 +115,84 @@ export function ScoringPage() {
       setPresentation(state);
     });
 
+    const handleScoreUpdate = () => {
+      fetchPageantData();
+    };
+    newSocket.on("score:update", handleScoreUpdate);
+    newSocket.on("scores:update", handleScoreUpdate);
+
     return () => { newSocket.close(); };
   }, [token]);
+
+  // Perform backend auto-save
+  const performSave = useCallback(
+    async (currentScores: Record<string, number>) => {
+      if (!selectedCandidateId || !selectedCategoryId || !token) return;
+      const currentCategory = categories.find((c) => c.id === selectedCategoryId);
+      const categoryCriteria = currentCategory?.criteria || [];
+      if (categoryCriteria.length === 0) return;
+
+      setSaveStatus("saving");
+
+      try {
+        const payloadScores = categoryCriteria.map((c) => ({
+          criteriaId: c.id,
+          value: currentScores[c.id] ?? c.minScore,
+        }));
+
+        const res = await fetch(`${API_BASE}/scores`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ candidateId: selectedCandidateId, scores: payloadScores }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          setSubmitted(true);
+          setSaveStatus("saved");
+
+          setScoredMap((prev) => ({
+            ...prev,
+            [selectedCandidateId]: {
+              ...(prev[selectedCandidateId] || {}),
+              [selectedCategoryId]: true,
+            },
+          }));
+
+          socket?.emit("judge:submit-score", { candidateId: selectedCandidateId, scores: payloadScores });
+        } else {
+          setSaveStatus("error");
+        }
+      } catch {
+        setSaveStatus("error");
+      }
+    },
+    [selectedCandidateId, selectedCategoryId, token, categories, socket]
+  );
 
   // Load scores for selected candidate + category
   useEffect(() => {
     if (!selectedCandidateId || !selectedCategoryId || categories.length === 0) return;
 
-    // Set criteria list
+    isInitialLoad.current = true;
+    setSaveStatus("idle");
+
     const currentCategory = categories.find((c) => c.id === selectedCategoryId);
     const categoryCriteria = currentCategory?.criteria || [];
 
-    // Initialize score values to defaults first
     const defaults: Record<string, number> = {};
     categoryCriteria.forEach((c) => {
       defaults[c.id] = c.minScore;
     });
 
-    // Fetch if the judge has already scored this candidate
     fetch(`${API_BASE}/scores/candidate/${selectedCandidateId}/category/${selectedCategoryId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
-          const judgeScores = d.data.filter((s: any) => s.judgeId === judgeInfo.id);
+          const judgeScores = d.data.filter((s: any) => s.judgeId === judgeInfo?.id);
           if (judgeScores.length > 0) {
             const savedScores: Record<string, number> = {};
             judgeScores.forEach((s: any) => {
@@ -126,70 +200,49 @@ export function ScoringPage() {
             });
             setScoreValues({ ...defaults, ...savedScores });
             setSubmitted(true);
+            setSaveStatus("saved");
           } else {
             setScoreValues(defaults);
             setSubmitted(false);
+            setSaveStatus("idle");
           }
         }
       })
       .catch(() => {
         setScoreValues(defaults);
         setSubmitted(false);
+        setSaveStatus("idle");
+      })
+      .finally(() => {
+        setTimeout(() => {
+          isInitialLoad.current = false;
+        }, 150);
       });
-  }, [selectedCandidateId, selectedCategoryId, categories, judgeInfo.id]);
+  }, [selectedCandidateId, selectedCategoryId, categories, judgeInfo?.id]);
 
   const handleScoreChange = (criteriaId: string, value: number, min: number, max: number) => {
     const clamped = Math.min(max, Math.max(min, value));
-    setScoreValues((prev) => ({ ...prev, [criteriaId]: clamped }));
+
+    setScoreValues((prev) => {
+      const updated = { ...prev, [criteriaId]: clamped };
+
+      if (!isInitialLoad.current) {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+          performSave(updated);
+        }, 350);
+      }
+
+      return updated;
+    });
+
+    if (!isInitialLoad.current) {
+      setSaveStatus((prev) => (prev !== "saving" ? "saving" : prev));
+    }
   };
 
   const handleSubmit = async () => {
-    if (!selectedCandidateId || !selectedCategoryId) return;
-    const currentCategory = categories.find((c) => c.id === selectedCategoryId);
-    const categoryCriteria = currentCategory?.criteria || [];
-    if (categoryCriteria.length === 0) return;
-
-    setSubmitting(true);
-
-    try {
-      const scores = categoryCriteria.map((c) => ({
-        criteriaId: c.id,
-        value: scoreValues[c.id] ?? c.minScore,
-      }));
-
-      const res = await fetch(`${API_BASE}/scores`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ candidateId: selectedCandidateId, scores }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setSubmitted(true);
-        toast.success("Scores submitted successfully!");
-
-        // Update scored map locally
-        setScoredMap((prev) => ({
-          ...prev,
-          [selectedCandidateId]: {
-            ...(prev[selectedCandidateId] || {}),
-            [selectedCategoryId]: true,
-          },
-        }));
-
-        // Emit socket event to notify other screens
-        socket?.emit("judge:submit-score", { candidateId: selectedCandidateId, scores });
-      } else {
-        toast.error(data.error || "Failed to submit score");
-      }
-    } catch {
-      toast.error("Network error. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    performSave(scoreValues);
   };
 
   const currentCategory = categories.find((c) => c.id === selectedCategoryId);
@@ -228,18 +281,34 @@ export function ScoringPage() {
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Category</label>
             <div className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryId(cat.id)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink ${selectedCategoryId === cat.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                    }`}
-                >
-                  {cat.name} ({cat.weight}%)
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const isActiveCategory = presentation?.activeCategoryId === cat.id;
+                const isSelectedCategory = selectedCategoryId === cat.id;
+
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategoryId(cat.id)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all shrink-0 md:shrink flex items-center justify-between gap-2 ${isSelectedCategory
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      }`}
+                  >
+                    <span>{cat.name} ({cat.weight}%)</span>
+                    {isActiveCategory && (
+                      <span
+                        className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider ${isSelectedCategory
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-500/20 text-emerald-400"
+                          }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                        ACTIVE
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -263,23 +332,19 @@ export function ScoringPage() {
                   >
                     <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate">#{c.candidateNumber} {c.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {isWalking && (
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold truncate">#{c.candidateNumber} {c.name}</p>
+                        {isScored && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        )}
+                      </div>
+                      {isWalking && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded animate-pulse flex items-center">
                             <Footprints className="w-3 h-3 inline mr-0.5" /> ON STAGE
                           </span>
-                        )}
-                        {isScored ? (
-                          <span className="text-[9px] bg-blue-500/20 text-blue-400 font-bold px-1.5 py-0.5 rounded flex items-center">
-                            <Check className="w-3 h-3 inline mr-0.5" /> SCORED
-                          </span>
-                        ) : (
-                          <span className="text-[9px] bg-muted text-muted-foreground font-bold px-1.5 py-0.5 rounded flex items-center">
-                            <Clock className="w-3 h-3 inline mr-0.5" /> PENDING
-                          </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
@@ -291,38 +356,95 @@ export function ScoringPage() {
         {/* Right Side: Scoring sliders */}
         <main className="flex-1 p-6 overflow-y-auto">
           {selectedCandidate ? (
-            <div className="max-w-md mx-auto space-y-6">
+            <div className="max-w-4xl w-full mx-auto space-y-6">
               {/* Candidate Card Summary */}
-              <Card className="p-5 flex items-center gap-4">
-                <img src={selectedCandidate.photoUrl || getFallback(selectedCandidate.name)} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-primary/30" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-foreground">{selectedCandidate.name}</h2>
-                    {presentation?.activeCandidateId === selectedCandidate.id && (
-                      <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded animate-pulse">ON STAGE</span>
+              <Card className="p-5 flex flex-row items-center justify-between gap-4">
+                {/* Left Side: Candidate Profile (Photo + Name & Number) */}
+                <div className="flex items-center gap-4">
+                  <img
+                    src={selectedCandidate.photoUrl || getFallback(selectedCandidate.name)}
+                    alt=""
+                    className="w-16 h-16 rounded-full object-cover ring-4 ring-primary/30 shrink-0"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-foreground">{selectedCandidate.name}</h2>
+                      {presentation?.activeCandidateId === selectedCandidate.id && (
+                        <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded animate-pulse">
+                          ON STAGE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                      Candidate #{selectedCandidate.candidateNumber}
+                    </p>
+                    {currentCategory && (
+                      <p className="text-xs text-primary font-bold mt-1 uppercase tracking-wider">
+                        {currentCategory.name}
+                      </p>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Candidate #{selectedCandidate.candidateNumber}</p>
-                  {currentCategory && (
-                    <p className="text-xs text-primary font-bold mt-1 uppercase tracking-wider">{currentCategory.name}</p>
-                  )}
+                </div>
+
+                {/* Right Side: Total Score & Submitted Status Indicator */}
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className="text-right bg-secondary/40 border border-border px-4 py-2 rounded-xl">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                      Total Score
+                    </span>
+                    <span className="text-3xl font-black font-mono text-primary">
+                      {criteriaList.reduce((sum, c) => sum + (scoreValues[c.id] ?? c.minScore), 0)}
+                    </span>
+                  </div>
+
+                  {/* Submission Status Indicator */}
+                  <div className="h-5 flex items-center justify-end">
+                    {saveStatus === "saving" && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Auto-Saving...
+                      </span>
+                    )}
+                    {saveStatus === "saved" && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Submitted & Saved
+                      </span>
+                    )}
+                    {saveStatus === "error" && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-400">
+                        Error saving (Retrying...)
+                      </span>
+                    )}
+                    {saveStatus === "idle" && !submitted && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground/60" /> Pending Entry
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Card>
 
               {/* Sliders */}
               <div className="space-y-4">
                 {criteriaList.map((c) => (
-                  <div key={c.id} className="bg-card border border-border rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={c.id} className="bg-card border border-border rounded-xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-xs font-semibold text-foreground">{c.name}</h3>
-                        <p className="text-[10px] text-muted-foreground">
+                        <h3 className="text-sm font-semibold text-foreground">{c.name}</h3>
+                        <p className="text-xs text-muted-foreground">
                           Weight: {c.weight}% · Range: {c.minScore}–{c.maxScore}
                         </p>
                       </div>
-                      <div className="text-xl font-bold font-mono text-primary w-16 text-center">
-                        {scoreValues[c.id] ?? c.minScore}
-                      </div>
+                      <input
+                        type="number"
+                        min={c.minScore}
+                        max={c.maxScore}
+                        value={scoreValues[c.id] ?? c.minScore}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? c.minScore : Number(e.target.value);
+                          handleScoreChange(c.id, val, c.minScore, c.maxScore);
+                        }}
+                        className="w-20 text-xl font-bold font-mono text-primary bg-secondary/50 border border-border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary py-1"
+                      />
                     </div>
 
                     <input
@@ -334,36 +456,9 @@ export function ScoringPage() {
                       onChange={(e) => handleScoreChange(c.id, Number(e.target.value), c.minScore, c.maxScore)}
                       className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
                     />
-
-                    <div className="flex justify-between mt-2 gap-1">
-                      {[c.minScore, Math.round((c.minScore + c.maxScore) / 2), c.maxScore].map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => handleScoreChange(c.id, v, c.minScore, c.maxScore)}
-                          className={`flex-1 py-1 rounded text-[10px] font-semibold transition-all ${scoreValues[c.id] === v
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Submit / Update Button */}
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting || criteriaList.length === 0}
-                variant="secondary"
-                size="lg"
-                className="w-full py-4 text-base"
-              >
-                {submitted ? "Update Scores" : "Submit Scores"}
-              </Button>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-white/30 text-sm">
@@ -371,6 +466,25 @@ export function ScoringPage() {
             </div>
           )}
         </main>
+      </div>
+
+      {/* Floating Call Assistance Icon Button (Bottom Left) */}
+      <div className="fixed bottom-6 left-6 z-50 flex items-center justify-center">
+        {assistancePopping && (
+          <span className="absolute w-12 h-12 rounded-full bg-amber-400 opacity-75 animate-ping" />
+        )}
+        <button
+          onClick={handleRequestAssistance}
+          className={`relative flex items-center justify-center w-12 h-12 rounded-full shadow-xl transition-all duration-300 active:scale-90 cursor-pointer ${
+            assistancePopping
+              ? "bg-amber-400 text-slate-950 scale-125 shadow-amber-400/60 ring-4 ring-amber-300/60"
+              : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/30 hover:scale-110"
+          }`}
+          title="Call Assistance"
+          aria-label="Call Assistance"
+        >
+          <PhoneCall className={`w-5 h-5 text-slate-950 transition-transform ${assistancePopping ? "animate-bounce" : ""}`} />
+        </button>
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { Crown, Footprints, Check, Clock, CheckCircle2, RefreshCw, PhoneCall } from "lucide-react";
+import { Crown, Footprints, Check, Clock, CheckCircle2, RefreshCw, PhoneCall, Lock, EyeOff } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { toast } from "sonner";
-import type { PresentationState, Candidate, Criteria, CategoryWithCriteria } from "@pageant/types";
+import type { PresentationState, Candidate, Criteria, CategoryWithCandidates, SegmentWithCategories } from "@pageant/types";
 
 const API_BASE = "/api";
 const SOCKET_URL = window.location.origin;
@@ -18,7 +18,8 @@ export function ScoringPage() {
 
   // Pageant data
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [categories, setCategories] = useState<CategoryWithCriteria[]>([]);
+  const [categories, setCategories] = useState<CategoryWithCandidates[]>([]);
+  const [segments, setSegments] = useState<SegmentWithCategories[]>([]);
 
   // Selection state
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
@@ -60,7 +61,7 @@ export function ScoringPage() {
     if (!token || !judgeInfo) navigate("/");
   }, [token, judgeInfo, navigate]);
 
-  // Fetch initial pageant data (candidates, categories, and judge's own scores)
+  // Fetch initial pageant data (candidates, categories, segments, and judge's own scores)
   const fetchPageantData = async () => {
     if (!judgeInfo) return;
     try {
@@ -69,6 +70,7 @@ export function ScoringPage() {
       if (d.success) {
         setCandidates(d.data.candidates);
         setCategories(d.data.categories);
+        if (d.data.segments) setSegments(d.data.segments);
 
         // Build map of scored candidates for the current judge
         const map: Record<string, Record<string, boolean>> = {};
@@ -115,14 +117,24 @@ export function ScoringPage() {
       setPresentation(state);
     });
 
+    newSocket.on("segment:lock-update", () => fetchPageantData());
+    newSocket.on("segment:hide-update", () => fetchPageantData());
+
     const handleScoreUpdate = () => {
       fetchPageantData();
     };
     newSocket.on("score:update", handleScoreUpdate);
     newSocket.on("scores:update", handleScoreUpdate);
+    newSocket.on("category:candidates-update", handleScoreUpdate);
 
     return () => { newSocket.close(); };
   }, [token]);
+
+  // Check if active selected category belongs to a hidden segment
+  const isSegmentHidden = segments.some(
+    (seg) => (seg.isHidden || seg.isLocked) && seg.categories?.some((c) => c.id === selectedCategoryId)
+  );
+  const isSegmentLocked = isSegmentHidden;
 
   // Perform backend auto-save
   const performSave = useCallback(
@@ -131,6 +143,15 @@ export function ScoringPage() {
       const currentCategory = categories.find((c) => c.id === selectedCategoryId);
       const categoryCriteria = currentCategory?.criteria || [];
       if (categoryCriteria.length === 0) return;
+
+      // Block saving if segment is locked
+      const currentSegmentIsLocked = segments.some(
+        (seg) => seg.isLocked && seg.categories?.some((c) => c.id === selectedCategoryId)
+      );
+      if (currentSegmentIsLocked) {
+        toast.error("This segment is locked by the controller. Scores cannot be altered.");
+        return;
+      }
 
       setSaveStatus("saving");
 
@@ -221,6 +242,7 @@ export function ScoringPage() {
   }, [selectedCandidateId, selectedCategoryId, categories, judgeInfo?.id]);
 
   const handleScoreChange = (criteriaId: string, value: number, min: number, max: number) => {
+    if (isSegmentLocked) return;
     const clamped = Math.min(max, Math.max(min, value));
 
     setScoreValues((prev) => {
@@ -245,9 +267,31 @@ export function ScoringPage() {
     performSave(scoreValues);
   };
 
-  const currentCategory = categories.find((c) => c.id === selectedCategoryId);
+  const currentCategory =
+    categories.find((c) => c.id === selectedCategoryId) ||
+    segments.flatMap((s) => s.categories || []).find((c) => c.id === selectedCategoryId);
+
   const criteriaList = currentCategory?.criteria || [];
-  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId);
+
+  const activeCategoryCandidates =
+    currentCategory && Array.isArray(currentCategory.candidates)
+      ? currentCategory.candidates
+      : candidates;
+
+  const selectedCandidate =
+    activeCategoryCandidates.find((c) => c.id === selectedCandidateId) || null;
+
+  // Auto-select first candidate in current category if selected candidate is invalid for this category
+  useEffect(() => {
+    if (activeCategoryCandidates.length > 0) {
+      const exists = activeCategoryCandidates.some((c) => c.id === selectedCandidateId);
+      if (!exists) {
+        setSelectedCandidateId(activeCategoryCandidates[0].id);
+      }
+    } else {
+      setSelectedCandidateId("");
+    }
+  }, [selectedCategoryId, activeCategoryCandidates, selectedCandidateId]);
 
   const getFallback = (name: string) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=128&bold=true`;
@@ -259,6 +303,11 @@ export function ScoringPage() {
       </div>
     );
   }
+
+  const visibleCategories = categories.filter((cat) => {
+    const seg = segments.find((s) => s.categories?.some((c) => c.id === cat.id));
+    return !seg || !(seg.isHidden || seg.isLocked);
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -281,7 +330,7 @@ export function ScoringPage() {
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Category</label>
             <div className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0">
-              {categories.map((cat) => {
+              {visibleCategories.map((cat) => {
                 const isActiveCategory = presentation?.activeCategoryId === cat.id;
                 const isSelectedCategory = selectedCategoryId === cat.id;
 
@@ -316,39 +365,45 @@ export function ScoringPage() {
           <div className="flex-1 flex flex-col min-h-0">
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Candidates</label>
             <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 pr-1">
-              {candidates.map((c) => {
-                const isWalking = presentation?.activeCandidateId === c.id;
-                const isScored = scoredMap[c.id]?.[selectedCategoryId] || false;
-                const isSelected = selectedCandidateId === c.id;
+              {activeCategoryCandidates.length === 0 ? (
+                <div className="text-xs text-muted-foreground/60 italic p-4 text-center border border-dashed border-border rounded-xl">
+                  No candidates selected for this category
+                </div>
+              ) : (
+                activeCategoryCandidates.map((c) => {
+                  const isWalking = presentation?.activeCandidateId === c.id;
+                  const isScored = scoredMap[c.id]?.[selectedCategoryId] || false;
+                  const isSelected = selectedCandidateId === c.id;
 
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCandidateId(c.id)}
-                    className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink min-w-50 md:min-w-0 ${isSelected
-                      ? "bg-primary/15 border-primary text-foreground"
-                      : "bg-muted/50 border-border hover:bg-muted text-muted-foreground"
-                      }`}
-                  >
-                    <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-bold truncate">#{c.candidateNumber} {c.name}</p>
-                        {isScored && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCandidateId(c.id)}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all shrink-0 md:shrink min-w-50 md:min-w-0 ${isSelected
+                        ? "bg-primary/15 border-primary text-foreground"
+                        : "bg-muted/50 border-border hover:bg-muted text-muted-foreground"
+                        }`}
+                    >
+                      <img src={c.photoUrl || getFallback(c.name)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-bold truncate">#{c.candidateNumber} {c.name}</p>
+                          {isScored && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          )}
+                        </div>
+                        {isWalking && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded animate-pulse flex items-center">
+                              <Footprints className="w-3 h-3 inline mr-0.5" /> ON STAGE
+                            </span>
+                          </div>
                         )}
                       </div>
-                      {isWalking && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[9px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded animate-pulse flex items-center">
-                            <Footprints className="w-3 h-3 inline mr-0.5" /> ON STAGE
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </aside>
@@ -423,10 +478,25 @@ export function ScoringPage() {
                 </div>
               </Card>
 
+              {/* Segment Hide Warning Banner */}
+              {isSegmentHidden && (
+                <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-4 rounded-2xl flex items-center gap-3.5 shadow-lg">
+                  <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/30 shrink-0">
+                    <EyeOff className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Segment Hidden by Controller</h4>
+                    <p className="text-xs text-amber-400/80 mt-0.5">
+                      This segment is currently hidden by the competition controller. Scores cannot be submitted or altered right now.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Sliders */}
               <div className="space-y-4">
                 {criteriaList.map((c) => (
-                  <div key={c.id} className="bg-card border border-border rounded-xl p-5 space-y-3">
+                  <div key={c.id} className={`bg-card border border-border rounded-xl p-5 space-y-3 transition-opacity ${isSegmentLocked ? "opacity-60" : ""}`}>
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-sm font-semibold text-foreground">{c.name}</h3>
@@ -438,12 +508,13 @@ export function ScoringPage() {
                         type="number"
                         min={c.minScore}
                         max={c.maxScore}
+                        disabled={isSegmentLocked}
                         value={scoreValues[c.id] ?? c.minScore}
                         onChange={(e) => {
                           const val = e.target.value === "" ? c.minScore : Number(e.target.value);
                           handleScoreChange(c.id, val, c.minScore, c.maxScore);
                         }}
-                        className="w-20 text-xl font-bold font-mono text-primary bg-secondary/50 border border-border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary py-1"
+                        className="w-20 text-xl font-bold font-mono text-primary bg-secondary/50 border border-border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary py-1 disabled:cursor-not-allowed disabled:opacity-50"
                       />
                     </div>
 
@@ -452,17 +523,22 @@ export function ScoringPage() {
                       min={c.minScore}
                       max={c.maxScore}
                       step={1}
+                      disabled={isSegmentLocked}
                       value={scoreValues[c.id] ?? c.minScore}
                       onChange={(e) => handleScoreChange(c.id, Number(e.target.value), c.minScore, c.maxScore)}
-                      className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
+                      className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-white/30 text-sm">
-              Select a candidate from the list to start scoring.
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50 text-sm gap-2 py-12">
+              {activeCategoryCandidates.length === 0 ? (
+                <p>No candidates selected for this category yet.</p>
+              ) : (
+                <p>Select a candidate from the list to start scoring.</p>
+              )}
             </div>
           )}
         </main>

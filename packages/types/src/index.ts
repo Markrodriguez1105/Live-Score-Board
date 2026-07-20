@@ -16,9 +16,19 @@ export interface Pageant {
   updatedAt: string;
 }
 
-export interface Category {
+export interface Segment {
   id: string;
   pageantId: string;
+  name: string;
+  order: number;
+  isLocked: boolean;
+  isHidden: boolean;
+  createdAt: string;
+}
+
+export interface Category {
+  id: string;
+  segmentId: string;
   name: string;
   order: number;
   weight: number; // percentage of total (e.g. 30 = 30%)
@@ -64,6 +74,7 @@ export interface PresentationState {
   pageantId: string;
   activeCategoryId: string | null;
   activeCandidateId: string | null;
+  activeSegmentId: string | null;
   isIdle: boolean;
   showScores: boolean;
   showJudgeBreakdown: boolean;
@@ -153,6 +164,18 @@ export interface ServerToClientEvents {
     categoryId: string;
     candidateId: string;
   }) => void;
+  "segment:lock-update": (payload: {
+    segmentId: string;
+    isLocked: boolean;
+  }) => void;
+  "segment:hide-update": (payload: {
+    segmentId: string;
+    isHidden: boolean;
+  }) => void;
+  "category:candidates-update": (payload: {
+    categoryId: string;
+    candidateIds: string[];
+  }) => void;
   "judge:assistance-alert": (payload: {
     judgeId: string;
     judgeName: string;
@@ -164,6 +187,8 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   "judge:submit-score": (payload: ScoreSubmission) => void;
   "admin:set-presentation": (state: Partial<PresentationState>) => void;
+  "admin:toggle-segment-lock": (payload: { segmentId: string; isLocked: boolean }) => void;
+  "admin:toggle-segment-hide": (payload: { segmentId: string; isHidden: boolean }) => void;
   "tabulator:override-score": (payload: ScoreOverride) => void;
   "judge:request-assistance": (payload: {
     judgeId: string;
@@ -186,10 +211,22 @@ export interface CategoryWithCriteria extends Category {
   criteria: Criteria[];
 }
 
+// === Category with nested criteria AND assigned candidates ===
+
+export interface CategoryWithCandidates extends CategoryWithCriteria {
+  candidates: Candidate[];
+}
+
+// === Segment with nested categories (each with criteria + candidates) ===
+
+export interface SegmentWithCategories extends Segment {
+  categories: CategoryWithCandidates[];
+}
+
 // === Pageant with full nested data ===
 
 export interface PageantFull extends Pageant {
-  categories: CategoryWithCriteria[];
+  segments: SegmentWithCategories[];
   candidates: Candidate[];
   judges: Judge[];
 }
@@ -208,10 +245,18 @@ export interface UpdatePageant extends Partial<CreatePageant> {
   status?: "draft" | "active" | "completed";
 }
 
+export interface CreateSegment {
+  name: string;
+  order: number;
+  isLocked?: boolean;
+  isHidden?: boolean;
+}
+
 export interface CreateCategory {
   name: string;
   order: number;
   weight: number;
+  candidateIds?: string[];
 }
 
 export interface CreateCriteria {

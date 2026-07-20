@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { PageantDetailPage } from "./pages/PageantDetailPage.js";
+import { SegmentsPage } from "./pages/SegmentsPage.js";
 import { CategoriesPage } from "./pages/CategoriesPage.js";
 import { CandidatesPage } from "./pages/CandidatesPage.js";
 import { JudgesPage } from "./pages/JudgesPage.js";
@@ -44,7 +45,8 @@ export default function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pageants/:id" element={<PageantDetailPage />} />
-        <Route path="/pageants/:id/categories" element={<CategoriesPage />} />
+        <Route path="/pageants/:id/segments" element={<SegmentsPage />} />
+        <Route path="/pageants/:id/segments/:segmentId/categories" element={<CategoriesPage />} />
         <Route path="/pageants/:id/candidates" element={<CandidatesPage />} />
         <Route path="/pageants/:id/judges" element={<JudgesPage />} />
         <Route path="/pageants/:id/live" element={<LiveControlPage />} />

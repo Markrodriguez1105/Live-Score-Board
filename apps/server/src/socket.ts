@@ -8,6 +8,7 @@ import {
   ScoreQueries,
   PresentationQueries,
   CriteriaQueries,
+  SegmentQueries,
 } from "@pageant/database";
 import type {
   ServerToClientEvents,
@@ -44,13 +45,20 @@ export function setupSocketHandlers(io: PageantIO) {
 
         const decoded = jwt.verify(token, JWT_SECRET || "") as JudgeJwtPayload;
 
-        // Validate score values against criteria rules
+        // Validate score values against criteria rules and check segment lock
         for (const s of payload.scores) {
           const criteria = await CriteriaQueries.getById(s.criteriaId);
           if (!criteria) {
             console.warn(`[Socket] Invalid criteria: ${s.criteriaId}`);
             return;
           }
+
+          const isLocked = await SegmentQueries.isCriteriaLocked(s.criteriaId);
+          if (isLocked) {
+            console.warn(`[Socket] Segment locked for criteria: ${s.criteriaId}`);
+            return;
+          }
+
           if (s.value < criteria.minScore || s.value > criteria.maxScore) {
             console.warn(
               `[Socket] Score ${s.value} out of range [${criteria.minScore}, ${criteria.maxScore}]`
@@ -105,6 +113,54 @@ export function setupSocketHandlers(io: PageantIO) {
         }
       } catch (err) {
         console.error("[Socket] Error updating presentation:", err);
+      }
+    });
+    // ── Admin: Toggle Segment Lock / Hide ─────────────────────
+    socket.on("admin:toggle-segment-lock", async (payload) => {
+      try {
+        if (payload.segmentId) {
+          const updated = await SegmentQueries.update(payload.segmentId, {
+            isLocked: payload.isLocked,
+            isHidden: payload.isLocked,
+          });
+          if (updated) {
+            io.emit("segment:lock-update", {
+              segmentId: updated.id,
+              isLocked: updated.isLocked,
+            });
+            io.emit("segment:hide-update", {
+              segmentId: updated.id,
+              isHidden: updated.isHidden,
+            });
+            console.log(`[Socket] Segment ${updated.id} visibility state: ${updated.isHidden}`);
+          }
+        }
+      } catch (err) {
+        console.error("[Socket] Error toggling segment lock:", err);
+      }
+    });
+
+    socket.on("admin:toggle-segment-hide", async (payload) => {
+      try {
+        if (payload.segmentId) {
+          const updated = await SegmentQueries.update(payload.segmentId, {
+            isHidden: payload.isHidden,
+            isLocked: payload.isHidden,
+          });
+          if (updated) {
+            io.emit("segment:hide-update", {
+              segmentId: updated.id,
+              isHidden: updated.isHidden,
+            });
+            io.emit("segment:lock-update", {
+              segmentId: updated.id,
+              isLocked: updated.isHidden,
+            });
+            console.log(`[Socket] Segment ${updated.id} hide state: ${updated.isHidden}`);
+          }
+        }
+      } catch (err) {
+        console.error("[Socket] Error toggling segment hide:", err);
       }
     });
 

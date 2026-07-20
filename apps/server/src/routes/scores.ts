@@ -9,6 +9,7 @@ import {
   CandidateQueries,
   CategoryQueries,
   JudgeQueries,
+  SegmentQueries,
 } from "@pageant/database";
 import { requireJudge, requireAdmin } from "../middleware/auth.js";
 
@@ -28,7 +29,7 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
       return;
     }
 
-    // Validate each score against criteria rules
+    // Validate each score against criteria rules and check if segment is locked
     for (const s of scores) {
       const criteria = await CriteriaQueries.getById(s.criteriaId);
       if (!criteria) {
@@ -38,6 +39,16 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
         });
         return;
       }
+
+      const isLocked = await SegmentQueries.isCriteriaLocked(s.criteriaId);
+      if (isLocked) {
+        res.status(403).json({
+          success: false,
+          error: "Segment is locked by controller. Scores cannot be submitted or altered.",
+        });
+        return;
+      }
+
       if (s.value < criteria.minScore || s.value > criteria.maxScore) {
         res.status(400).json({
           success: false,
@@ -208,14 +219,18 @@ scoreRoutes.get("/pageants/:pageantId/results", async (req, res) => {
     const pageantId = req.params.pageantId as string;
     const rawScores = await ScoreQueries.getResultsByPageant(pageantId);
     const candidates = await CandidateQueries.getByPageantId(pageantId);
-    const categories = await CategoryQueries.getWithCriteria(pageantId);
+    const segments = await SegmentQueries.getWithCategories(pageantId);
     const judges = await JudgeQueries.getByPageantId(pageantId);
+
+    // Also provide a flat categories list for backward compatibility
+    const categories = await CategoryQueries.getAllWithCriteria(pageantId);
 
     res.json({
       success: true,
       data: {
         scores: rawScores,
         candidates,
+        segments,
         categories,
         judges,
       },

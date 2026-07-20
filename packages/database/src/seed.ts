@@ -6,10 +6,12 @@ import "dotenv/config";
 import { initDatabase, initSchema } from "./index.js";
 import {
   PageantQueries,
+  SegmentQueries,
   CategoryQueries,
   CriteriaQueries,
   CandidateQueries,
   JudgeQueries,
+  CategoryCandidateQueries,
 } from "./queries.js";
 
 async function seed() {
@@ -37,30 +39,69 @@ async function seed() {
   });
   console.log(`✅ Pageant created: ${pageant.name} (${pageant.id})`);
 
-  // 2. Create categories
-  const swimwear = await CategoryQueries.create(pageant.id, {
+  // 2. Create candidates first (needed for category assignment)
+  const candidateNames = [
+    "Maria Santos",
+    "Isabella Cruz",
+    "Sofia Reyes",
+    "Gabriella Torres",
+    "Ana Gonzales",
+    "Lucia Fernandez",
+    "Valentina Aquino",
+    "Camila Rivera",
+    "Elena Mendoza",
+    "Victoria Lim",
+  ];
+
+  const candidates = [];
+  for (let i = 0; i < candidateNames.length; i++) {
+    const c = await CandidateQueries.create(pageant.id, {
+      name: candidateNames[i],
+      candidateNumber: i + 1,
+    });
+    candidates.push(c);
+  }
+  console.log(`✅ Candidates created: ${candidateNames.length}`);
+
+  const allCandidateIds = candidates.map((c) => c.id);
+
+  // 3. Create a segment
+  const mainSegment = await SegmentQueries.create(pageant.id, {
+    name: "Main Competition",
+    order: 1,
+  });
+  console.log(`✅ Segment created: ${mainSegment.name} (${mainSegment.id})`);
+
+  // 4. Create categories under the segment
+  const swimwear = await CategoryQueries.create(mainSegment.id, {
     name: "Swimwear",
     order: 1,
     weight: 25,
   });
-  const eveningGown = await CategoryQueries.create(pageant.id, {
+  const eveningGown = await CategoryQueries.create(mainSegment.id, {
     name: "Evening Gown",
     order: 2,
     weight: 25,
   });
-  const talent = await CategoryQueries.create(pageant.id, {
+  const talent = await CategoryQueries.create(mainSegment.id, {
     name: "Talent",
     order: 3,
     weight: 25,
   });
-  const qa = await CategoryQueries.create(pageant.id, {
+  const qa = await CategoryQueries.create(mainSegment.id, {
     name: "Question & Answer",
     order: 4,
     weight: 25,
   });
   console.log(`✅ Categories created: 4`);
 
-  // 3. Create criteria for each category
+  // 5. Assign all candidates to each category
+  for (const cat of [swimwear, eveningGown, talent, qa]) {
+    await CategoryCandidateQueries.setCandidates(cat.id, allCandidateIds);
+  }
+  console.log(`✅ All candidates assigned to all categories`);
+
+  // 6. Create criteria for each category
   const criteriaData = [
     {
       categoryId: swimwear.id, criteria: [
@@ -101,29 +142,7 @@ async function seed() {
   }
   console.log(`✅ Criteria created: ${criteriaCount}`);
 
-  // 4. Create candidates
-  const candidateNames = [
-    "Maria Santos",
-    "Isabella Cruz",
-    "Sofia Reyes",
-    "Gabriella Torres",
-    "Ana Gonzales",
-    "Lucia Fernandez",
-    "Valentina Aquino",
-    "Camila Rivera",
-    "Elena Mendoza",
-    "Victoria Lim",
-  ];
-
-  for (let i = 0; i < candidateNames.length; i++) {
-    await CandidateQueries.create(pageant.id, {
-      name: candidateNames[i],
-      candidateNumber: i + 1,
-    });
-  }
-  console.log(`✅ Candidates created: ${candidateNames.length}`);
-
-  // 5. Create judges
+  // 7. Create judges
   const judges = [
     { name: "Judge Alpha", pin: "1001" },
     { name: "Judge Bravo", pin: "1002" },

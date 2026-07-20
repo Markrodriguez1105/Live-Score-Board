@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Plus, X, AlertTriangle, Trash2 } from "lucide-react";
-import type { CategoryWithCriteria, CreateCriteria, Category, Criteria } from "@pageant/types";
+import { ArrowLeft, ClipboardList, Plus, X, AlertTriangle, Trash2, Users, Check } from "lucide-react";
+import type { CategoryWithCandidates, CreateCriteria, Category, Criteria, Candidate } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
@@ -11,9 +11,10 @@ import { Label } from "@pageant/ui/components/label";
 const API_BASE = "/api";
 
 export function CategoriesPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, segmentId } = useParams<{ id: string; segmentId: string }>();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<CategoryWithCriteria[]>([]);
+  const [categories, setCategories] = useState<CategoryWithCandidates[]>([]);
+  const [allCandidates, setAllCandidates] = useState<Candidate[]>([]);
   const [showCatModal, setShowCatModal] = useState(false);
   const [showCritModal, setShowCritModal] = useState<string | null>(null);
   const [editCategoryData, setEditCategoryData] = useState<Category | null>(null);
@@ -23,20 +24,34 @@ export function CategoriesPage() {
   const [deleteCriterionTarget, setDeleteCriterionTarget] = useState<Criteria | null>(null);
   const [deletingCrit, setDeletingCrit] = useState(false);
 
+  // Candidate assignment state
+  const [assignCategoryId, setAssignCategoryId] = useState<string | null>(null);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [savingCandidates, setSavingCandidates] = useState(false);
+
   const [catForm, setCatForm] = useState({ name: "", weight: 0, order: 0 });
   const [critForm, setCritForm] = useState<CreateCriteria>({ name: "", weight: 0, minScore: 10, maxScore: 20, order: 0 });
 
   const fetchCategories = async () => {
-    const res = await fetch(`${API_BASE}/pageants/${id}/categories`, { credentials: "include" });
+    const res = await fetch(`${API_BASE}/segments/${segmentId}/categories`, { credentials: "include" });
     const data = await res.json();
     if (data.success) setCategories(data.data);
   };
 
-  useEffect(() => { fetchCategories(); }, [id]);
+  const fetchCandidates = async () => {
+    const res = await fetch(`${API_BASE}/pageants/${id}/candidates`, { credentials: "include" });
+    const data = await res.json();
+    if (data.success) setAllCandidates(data.data);
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchCandidates();
+  }, [id, segmentId]);
 
   const createCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${API_BASE}/pageants/${id}/categories`, {
+    await fetch(`${API_BASE}/segments/${segmentId}/categories`, {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
       body: JSON.stringify({ ...catForm, order: categories.length + 1 }),
     });
@@ -113,15 +128,58 @@ export function CategoriesPage() {
     }
   };
 
+  // Open candidate assignment dialog
+  const openAssignCandidates = (categoryId: string) => {
+    const cat = categories.find((c) => c.id === categoryId);
+    setSelectedCandidateIds(cat?.candidates.map((c) => c.id) || []);
+    setAssignCategoryId(categoryId);
+  };
+
+  const toggleCandidate = (candidateId: string) => {
+    setSelectedCandidateIds((prev) =>
+      prev.includes(candidateId)
+        ? prev.filter((id) => id !== candidateId)
+        : [...prev, candidateId]
+    );
+  };
+
+  const selectAllCandidates = () => {
+    if (selectedCandidateIds.length === allCandidates.length) {
+      setSelectedCandidateIds([]);
+    } else {
+      setSelectedCandidateIds(allCandidates.map((c) => c.id));
+    }
+  };
+
+  const saveAssignedCandidates = async () => {
+    if (!assignCategoryId) return;
+    setSavingCandidates(true);
+    try {
+      await fetch(`${API_BASE}/categories/${assignCategoryId}/candidates`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ candidateIds: selectedCandidateIds }),
+      });
+      setAssignCategoryId(null);
+      fetchCategories();
+    } catch {
+      /* ignore */
+    } finally {
+      setSavingCandidates(false);
+    }
+  };
+
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0);
+
+  const getFallback = (name: string) =>
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=128&bold=true`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/pageants/${id}`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
-              <ArrowLeft className="w-4 h-4" /> Back
+            <button onClick={() => navigate(`/pageants/${id}/segments`)} className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" /> Back to Segments
             </button>
             <h1 className="text-lg font-bold text-foreground">Categories & Criteria</h1>
           </div>
@@ -151,9 +209,19 @@ export function CategoriesPage() {
                 <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-card/50">
                   <div>
                     <h3 className="font-bold text-foreground text-base">{cat.name}</h3>
-                    <p className="text-xs text-muted-foreground">Weight: {cat.weight}% of total</p>
+                    <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
+                      <span>Weight: {cat.weight}% of total</span>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {cat.candidates.length} {cat.candidates.length === 1 ? "candidate" : "candidates"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openAssignCandidates(cat.id)}>
+                      <Users className="w-3.5 h-3.5 mr-1" /> Candidates
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setShowCritModal(cat.id)}>
                       <Plus className="w-3.5 h-3.5 mr-1" /> Criteria
                     </Button>
@@ -392,6 +460,7 @@ export function CategoriesPage() {
           )}
         </DialogContent>
       </Dialog>
+
       {/* Delete Category Confirmation Dialog */}
       <Dialog open={!!deleteCategoryTarget} onOpenChange={(open) => { if (!open) setDeleteCategoryTarget(null); }}>
         <DialogContent className="sm:max-w-md">
@@ -416,21 +485,10 @@ export function CategoriesPage() {
           )}
 
           <div className="flex gap-2 justify-end pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteCategoryTarget(null)}
-              disabled={deletingCat}
-            >
+            <Button type="button" variant="ghost" onClick={() => setDeleteCategoryTarget(null)} disabled={deletingCat}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deletingCat}
-              onClick={handleDeleteCategory}
-              className="gap-1.5"
-            >
+            <Button type="button" variant="destructive" disabled={deletingCat} onClick={handleDeleteCategory} className="gap-1.5">
               <Trash2 className="w-4 h-4" />
               {deletingCat ? "Deleting..." : "Delete Category"}
             </Button>
@@ -462,23 +520,86 @@ export function CategoriesPage() {
           )}
 
           <div className="flex gap-2 justify-end pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteCriterionTarget(null)}
-              disabled={deletingCrit}
-            >
+            <Button type="button" variant="ghost" onClick={() => setDeleteCriterionTarget(null)} disabled={deletingCrit}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deletingCrit}
-              onClick={handleDeleteCriterion}
-              className="gap-1.5"
-            >
+            <Button type="button" variant="destructive" disabled={deletingCrit} onClick={handleDeleteCriterion} className="gap-1.5">
               <Trash2 className="w-4 h-4" />
               {deletingCrit ? "Deleting..." : "Delete Criterion"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Candidates Dialog */}
+      <Dialog open={!!assignCategoryId} onOpenChange={(open) => { if (!open) setAssignCategoryId(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Assign Candidates
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {selectedCandidateIds.length} of {allCandidates.length} selected
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={selectAllCandidates}
+                className="text-xs"
+              >
+                {selectedCandidateIds.length === allCandidates.length ? "Deselect All" : "Select All"}
+              </Button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-1.5 pr-1">
+              {allCandidates.map((c) => {
+                const isSelected = selectedCandidateIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCandidate(c.id)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3 cursor-pointer ${
+                      isSelected
+                        ? "bg-primary/10 border-primary/40 text-foreground"
+                        : "bg-card border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                      isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                    }`}>
+                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <img
+                      src={c.photoUrl || getFallback(c.name)}
+                      alt={c.name}
+                      className="w-8 h-8 rounded-lg object-cover border border-white/10 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{c.name}</p>
+                      <p className="text-[10px] font-mono font-bold text-amber-400">
+                        #{String(c.candidateNumber).padStart(2, "0")}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-3 border-t border-border">
+            <Button type="button" variant="ghost" onClick={() => setAssignCategoryId(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveAssignedCandidates} disabled={savingCandidates} className="gap-1.5">
+              <Check className="w-4 h-4" />
+              {savingCandidates ? "Saving..." : "Save Assignment"}
             </Button>
           </div>
         </DialogContent>

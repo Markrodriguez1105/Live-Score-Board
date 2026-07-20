@@ -373,7 +373,7 @@ export function ScoringDashboard() {
               {cat.name} ({cat.weight}%)
             </button>
           ))}
-        </div        {/* Tabulator Score Matrix View (Category Selected) */}
+        </div>
         {selectedCategory && (() => {
           const categoryCandidates = (selectedCategory.candidates && selectedCategory.candidates.length > 0)
             ? selectedCategory.candidates
@@ -405,21 +405,19 @@ export function ScoringDashboard() {
                   <span className="text-muted-foreground/70 text-[10px] font-mono uppercase px-2">Order by:</span>
                   <button
                     onClick={() => setCategorySortBy("candidateNumber")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      categorySortBy === "candidateNumber"
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${categorySortBy === "candidateNumber"
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                    }`}
+                      }`}
                   >
                     Candidate #
                   </button>
                   <button
                     onClick={() => setCategorySortBy("rank")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      categorySortBy === "rank"
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${categorySortBy === "rank"
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                    }`}
+                      }`}
                   >
                     Rank
                   </button>

@@ -8,6 +8,7 @@ import type { RowDataPacket } from "mysql2/promise";
 
 import type {
   Pageant,
+  Segment,
   Category,
   Criteria,
   Candidate,
@@ -16,11 +17,14 @@ import type {
   PresentationState,
   CreatePageant,
   UpdatePageant,
+  CreateSegment,
   CreateCategory,
   CreateCriteria,
   CreateCandidate,
   CreateJudge,
   CategoryWithCriteria,
+  CategoryWithCandidates,
+  SegmentWithCategories,
 } from "@pageant/types";
 
 // === Helpers ===
@@ -51,10 +55,22 @@ function toPageant(row: RowDataPacket): Pageant {
   };
 }
 
-function toCategory(row: RowDataPacket): Category {
+function toSegment(row: RowDataPacket): Segment {
   return {
     id: row.id,
     pageantId: row.pageant_id,
+    name: row.name,
+    order: row.order,
+    isLocked: !!row.is_locked || !!row.is_hidden,
+    isHidden: !!row.is_hidden || !!row.is_locked,
+    createdAt: row.created_at,
+  };
+}
+
+function toCategory(row: RowDataPacket): Category {
+  return {
+    id: row.id,
+    segmentId: row.segment_id,
     name: row.name,
     order: row.order,
     weight: Number(row.weight),
@@ -109,6 +125,7 @@ function toScore(row: RowDataPacket): Score & { judgeName?: string; criteriaWeig
 function toPresentationState(row: RowDataPacket): PresentationState {
   return {
     pageantId: row.pageant_id,
+    activeSegmentId: row.active_segment_id ?? null,
     activeCategoryId: row.active_category_id,
     activeCandidateId: row.active_candidate_id,
     isIdle: !!row.is_idle,
@@ -175,14 +192,100 @@ export const PageantQueries = {
 };
 
 // ============================================================
+// Segment Queries
+// ============================================================
+
+export const SegmentQueries = {
+  async getByPageantId(pageantId: string): Promise<Segment[]> {
+    const rows = await query(
+      "SELECT * FROM segments WHERE pageant_id = ? ORDER BY `order` ASC",
+      [pageantId]
+    );
+    return rows.map(toSegment);
+  },
+
+  async getById(id: string): Promise<Segment | null> {
+    const rows = await query("SELECT * FROM segments WHERE id = ?", [id]);
+    return rows.length > 0 ? toSegment(rows[0]) : null;
+  },
+
+  async getWithCategories(pageantId: string): Promise<SegmentWithCategories[]> {
+    const segments = await SegmentQueries.getByPageantId(pageantId);
+    const result: SegmentWithCategories[] = [];
+    for (const seg of segments) {
+      const categories = await CategoryQueries.getWithCandidates(seg.id);
+      result.push({ ...seg, categories });
+    }
+    return result;
+  },
+
+  async create(pageantId: string, data: CreateSegment): Promise<Segment> {
+    const id = uuidv4();
+    const hiddenVal = (data.isHidden || data.isLocked) ? 1 : 0;
+    await execute(
+      "INSERT INTO segments (id, pageant_id, name, `order`, is_locked, is_hidden) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, pageantId, data.name, data.order, hiddenVal, hiddenVal]
+    );
+    return (await SegmentQueries.getById(id))!;
+  },
+
+  async update(id: string, data: Partial<CreateSegment>): Promise<Segment | null> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
+    if (data.order !== undefined) { fields.push("`order` = ?"); values.push(data.order); }
+    if (data.isHidden !== undefined) {
+      fields.push("is_hidden = ?, is_locked = ?");
+      values.push(data.isHidden ? 1 : 0, data.isHidden ? 1 : 0);
+    } else if (data.isLocked !== undefined) {
+      fields.push("is_hidden = ?, is_locked = ?");
+      values.push(data.isLocked ? 1 : 0, data.isLocked ? 1 : 0);
+    }
+
+    if (fields.length === 0) return SegmentQueries.getById(id);
+
+    values.push(id);
+    await execute(`UPDATE segments SET ${fields.join(", ")} WHERE id = ?`, values);
+    return SegmentQueries.getById(id);
+  },
+
+  async isCategoryLocked(categoryId: string): Promise<boolean> {
+    const rows = await query(
+      `SELECT s.is_locked, s.is_hidden FROM segments s
+       JOIN categories c ON c.segment_id = s.id
+       WHERE c.id = ?`,
+      [categoryId]
+    );
+    return rows.length > 0 ? (!!rows[0].is_locked || !!rows[0].is_hidden) : false;
+  },
+
+  async isCriteriaLocked(criteriaId: string): Promise<boolean> {
+    const rows = await query(
+      `SELECT s.is_locked, s.is_hidden FROM segments s
+       JOIN categories c ON c.segment_id = s.id
+       JOIN criteria cr ON cr.category_id = c.id
+       WHERE cr.id = ?`,
+      [criteriaId]
+    );
+    return rows.length > 0 ? (!!rows[0].is_locked || !!rows[0].is_hidden) : false;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    const result = await execute("DELETE FROM segments WHERE id = ?", [id]);
+    return result.affectedRows > 0;
+  },
+};
+
+// ============================================================
 // Category Queries
 // ============================================================
 
 export const CategoryQueries = {
-  async getByPageantId(pageantId: string): Promise<Category[]> {
+  async getBySegmentId(segmentId: string): Promise<Category[]> {
     const rows = await query(
-      "SELECT * FROM categories WHERE pageant_id = ? ORDER BY `order` ASC",
-      [pageantId]
+      "SELECT * FROM categories WHERE segment_id = ? ORDER BY `order` ASC",
+      [segmentId]
     );
     return rows.map(toCategory);
   },
@@ -192,8 +295,8 @@ export const CategoryQueries = {
     return rows.length > 0 ? toCategory(rows[0]) : null;
   },
 
-  async getWithCriteria(pageantId: string): Promise<CategoryWithCriteria[]> {
-    const categories = await CategoryQueries.getByPageantId(pageantId);
+  async getWithCriteria(segmentId: string): Promise<CategoryWithCriteria[]> {
+    const categories = await CategoryQueries.getBySegmentId(segmentId);
     const result: CategoryWithCriteria[] = [];
     for (const cat of categories) {
       const criteria = await CriteriaQueries.getByCategoryId(cat.id);
@@ -202,12 +305,56 @@ export const CategoryQueries = {
     return result;
   },
 
-  async create(pageantId: string, data: CreateCategory): Promise<Category> {
+  async getWithCandidates(segmentId: string): Promise<CategoryWithCandidates[]> {
+    const categories = await CategoryQueries.getBySegmentId(segmentId);
+    const result: CategoryWithCandidates[] = [];
+    for (const cat of categories) {
+      const criteria = await CriteriaQueries.getByCategoryId(cat.id);
+      const candidates = await CategoryCandidateQueries.getByCategoryId(cat.id);
+      result.push({ ...cat, criteria, candidates });
+    }
+    return result;
+  },
+
+  /**
+   * Get all categories across all segments for a given pageant.
+   * Useful for results aggregation.
+   */
+  async getByPageantId(pageantId: string): Promise<Category[]> {
+    const rows = await query(
+      `SELECT c.* FROM categories c
+       JOIN segments s ON c.segment_id = s.id
+       WHERE s.pageant_id = ?
+       ORDER BY s.\`order\` ASC, c.\`order\` ASC`,
+      [pageantId]
+    );
+    return rows.map(toCategory);
+  },
+
+  /**
+   * Get all categories with criteria for a pageant (across all segments).
+   */
+  async getAllWithCriteria(pageantId: string): Promise<CategoryWithCandidates[]> {
+    const categories = await CategoryQueries.getByPageantId(pageantId);
+    const result: CategoryWithCandidates[] = [];
+    for (const cat of categories) {
+      const criteria = await CriteriaQueries.getByCategoryId(cat.id);
+      const candidates = await CategoryCandidateQueries.getByCategoryId(cat.id);
+      result.push({ ...cat, criteria, candidates });
+    }
+    return result;
+  },
+
+  async create(segmentId: string, data: CreateCategory): Promise<Category> {
     const id = uuidv4();
     await execute(
-      "INSERT INTO categories (id, pageant_id, name, `order`, weight) VALUES (?, ?, ?, ?, ?)",
-      [id, pageantId, data.name, data.order, data.weight]
+      "INSERT INTO categories (id, segment_id, name, `order`, weight) VALUES (?, ?, ?, ?, ?)",
+      [id, segmentId, data.name, data.order, data.weight]
     );
+    // If candidateIds were provided, assign them
+    if (data.candidateIds && data.candidateIds.length > 0) {
+      await CategoryCandidateQueries.setCandidates(id, data.candidateIds);
+    }
     return (await CategoryQueries.getById(id))!;
   },
 
@@ -219,16 +366,70 @@ export const CategoryQueries = {
     if (data.order !== undefined) { fields.push("`order` = ?"); values.push(data.order); }
     if (data.weight !== undefined) { fields.push("weight = ?"); values.push(data.weight); }
 
-    if (fields.length === 0) return CategoryQueries.getById(id);
+    if (fields.length === 0 && !data.candidateIds) return CategoryQueries.getById(id);
 
-    values.push(id);
-    await execute(`UPDATE categories SET ${fields.join(", ")} WHERE id = ?`, values);
+    if (fields.length > 0) {
+      values.push(id);
+      await execute(`UPDATE categories SET ${fields.join(", ")} WHERE id = ?`, values);
+    }
+
+    if (data.candidateIds) {
+      await CategoryCandidateQueries.setCandidates(id, data.candidateIds);
+    }
+
     return CategoryQueries.getById(id);
   },
 
   async delete(id: string): Promise<boolean> {
     const result = await execute("DELETE FROM categories WHERE id = ?", [id]);
     return result.affectedRows > 0;
+  },
+};
+
+// ============================================================
+// Category-Candidate Junction Queries
+// ============================================================
+
+export const CategoryCandidateQueries = {
+  async getByCategoryId(categoryId: string): Promise<Candidate[]> {
+    const rows = await query(
+      `SELECT c.* FROM candidates c
+       JOIN category_candidates cc ON c.id = cc.candidate_id
+       WHERE cc.category_id = ?
+       ORDER BY c.candidate_number ASC`,
+      [categoryId]
+    );
+    return rows.map(toCandidate);
+  },
+
+  /**
+   * Bulk-set the candidates assigned to a category (replaces all existing assignments).
+   */
+  async setCandidates(categoryId: string, candidateIds: string[]): Promise<void> {
+    // Remove all existing assignments
+    await execute("DELETE FROM category_candidates WHERE category_id = ?", [categoryId]);
+
+    // Insert new assignments
+    for (const candidateId of candidateIds) {
+      await execute(
+        "INSERT INTO category_candidates (category_id, candidate_id) VALUES (?, ?)",
+        [categoryId, candidateId]
+      );
+    }
+  },
+
+  async addCandidate(categoryId: string, candidateId: string): Promise<void> {
+    await execute(
+      "INSERT IGNORE INTO category_candidates (category_id, candidate_id) VALUES (?, ?)",
+      [categoryId, candidateId]
+    );
+  },
+
+  async removeCandidate(categoryId: string, candidateId: string): Promise<void> {
+    await execute(
+      "DELETE FROM category_candidates WHERE category_id = ? AND candidate_id = ?",
+      [categoryId, candidateId]
+    );
   },
 };
 
@@ -503,14 +704,18 @@ export const ScoreQueries = {
          cr.max_score,
          cr.category_id,
          cat.name as category_name,
-         cat.weight as category_weight
+         cat.weight as category_weight,
+         cat.segment_id,
+         seg.name as segment_name,
+         seg.\`order\` as segment_order
        FROM scores s
        JOIN judges j ON s.judge_id = j.id
        JOIN candidates c ON s.candidate_id = c.id
        JOIN criteria cr ON s.criteria_id = cr.id
        JOIN categories cat ON cr.category_id = cat.id
-       WHERE cat.pageant_id = ?
-       ORDER BY c.candidate_number, cat.\`order\`, cr.\`order\`, j.name`,
+       JOIN segments seg ON cat.segment_id = seg.id
+       WHERE seg.pageant_id = ?
+       ORDER BY seg.\`order\`, c.candidate_number, cat.\`order\`, cr.\`order\`, j.name`,
       [pageantId]
     );
     return rows;
@@ -567,6 +772,10 @@ export const PresentationQueries = {
     const fields: string[] = [];
     const values: unknown[] = [];
 
+    if (data.activeSegmentId !== undefined) {
+      fields.push("active_segment_id = ?");
+      values.push(data.activeSegmentId);
+    }
     if (data.activeCategoryId !== undefined) {
       fields.push("active_category_id = ?");
       values.push(data.activeCategoryId);

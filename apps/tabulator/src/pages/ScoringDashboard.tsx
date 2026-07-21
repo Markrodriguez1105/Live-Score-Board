@@ -34,6 +34,7 @@ interface CategoryItem {
   name: string;
   weight: number;
   criteria: CriteriaItem[];
+  candidates?: CandidateItem[];
 }
 
 interface CandidateItem {
@@ -87,6 +88,7 @@ export function ScoringDashboard() {
   const [data, setData] = useState<ResultData | null>(null);
   const [activeTab, setActiveTab] = useState<string>("");
   const [editModal, setEditModal] = useState<EditModalState | null>(null);
+  const [categorySortBy, setCategorySortBy] = useState<"candidateNumber" | "rank">("candidateNumber");
   const [savingScore, setSavingScore] = useState(false);
   const [clearingScore, setClearingScore] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -146,6 +148,7 @@ export function ScoringDashboard() {
 
     newSocket.on("score:update", handleUpdate);
     newSocket.on("scores:update", handleUpdate);
+    newSocket.on("category:candidates-update", handleUpdate);
     newSocket.on("judge:assistance-alert", handleAssistanceAlert);
 
     return () => {
@@ -170,24 +173,40 @@ export function ScoringDashboard() {
     );
   }
 
-  // Calculate Overall Standings (rounded integers)
+  // Helper to compute a candidate's average score across judges for a given category
+  const calcCategoryAverageScore = (candidateId: string, category: CategoryItem) => {
+    if (!data) return 0;
+    const judgeTotals: number[] = [];
+    for (const j of data.judges) {
+      let judgeTotal = 0;
+      let hasAnyScore = false;
+      for (const cr of category.criteria) {
+        const scoreRow = data.scores.find(
+          (s) => s.candidate_id === candidateId && s.judge_id === j.id && s.criteria_id === cr.id
+        );
+        if (scoreRow) {
+          judgeTotal += Number(scoreRow.value);
+          hasAnyScore = true;
+        }
+      }
+      if (hasAnyScore) {
+        judgeTotals.push(judgeTotal);
+      }
+    }
+    if (judgeTotals.length === 0) return 0;
+    const avg = judgeTotals.reduce((sum, val) => sum + val, 0) / judgeTotals.length;
+    return Math.round(avg * 100) / 100;
+  };
+
+  // Calculate Overall Standings (with 2 decimal places)
   const candidateTotals = data.candidates
     .map((c) => {
       let total = 0;
       for (const cat of data.categories) {
-        let catTotal = 0;
-        for (const cr of cat.criteria) {
-          const criteriaScores = data.scores.filter(
-            (s) => s.candidate_id === c.id && s.criteria_id === cr.id
-          );
-          if (criteriaScores.length > 0) {
-            const avg = criteriaScores.reduce((sum, s) => sum + Number(s.value), 0) / criteriaScores.length;
-            catTotal += avg * (cr.weight / 100);
-          }
-        }
-        total += catTotal * (cat.weight / 100);
+        const category_total_score = calcCategoryAverageScore(c.id, cat);
+        total += category_total_score * (cat.weight / 100);
       }
-      return { ...c, total: Math.round(total) };
+      return { ...c, total: Math.round(total * 100) / 100 };
     })
     .sort((a, b) => b.total - a.total);
 
@@ -355,101 +374,175 @@ export function ScoringDashboard() {
             </button>
           ))}
         </div>
+        {selectedCategory && (() => {
+          const categoryCandidates = (selectedCategory.candidates && selectedCategory.candidates.length > 0)
+            ? selectedCategory.candidates
+            : (data?.candidates || []);
 
-        {/* Tabulator Score Matrix View (Category Selected) */}
-        {selectedCategory && (
-          <div className="bg-[#121318] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 bg-white/2">
-                    <th className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase w-64">
-                      CANDIDATE
-                    </th>
-                    {data.judges.map((j, idx) => (
-                      <th
-                        key={j.id}
-                        className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase text-center"
-                      >
-                        JUDGE {idx + 1}
-                        <span className="block text-[9px] font-normal text-muted-foreground/60 truncate max-w-30 mx-auto mt-0.5">
-                          {j.name}
-                        </span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {data.candidates.map((c) => {
-                    return (
-                      <tr key={c.id} className="hover:bg-white/2transition-colors">
-                        {/* Candidate Info Cell */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3.5">
-                            <img
-                              src={c.photoUrl || getFallback(c.name)}
-                              alt={c.name}
-                              className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-white text-sm truncate">{c.name}</h4>
-                              <p className="text-xs font-mono font-bold text-amber-400 mt-0.5">
-                                #{String(c.candidateNumber).padStart(2, "0")}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+          const rankedCategoryCandidates = categoryCandidates
+            .map((c) => {
+              const catTotal = calcCategoryAverageScore(c.id, selectedCategory);
+              return { ...c, catTotal };
+            })
+            .sort((a, b) => b.catTotal - a.catTotal)
+            .map((c, i) => ({ ...c, rank: i + 1 }));
 
-                        {/* Judge Score Cells */}
-                        {data.judges.map((j) => {
-                          const judgeCriteriaScores = selectedCategory.criteria.map((cr) => {
-                            const scoreRow = data.scores.find(
-                              (s) =>
-                                s.candidate_id === c.id &&
-                                s.judge_id === j.id &&
-                                s.criteria_id === cr.id
-                            );
-                            return scoreRow ? Number(scoreRow.value) : null;
-                          });
+          const displayCandidates = [...rankedCategoryCandidates].sort((a, b) => {
+            if (categorySortBy === "rank") {
+              return a.rank - b.rank;
+            }
+            return a.candidateNumber - b.candidateNumber;
+          });
 
-                          const isComplete = judgeCriteriaScores.every((s) => s !== null);
-                          const totalValue = isComplete
-                            ? judgeCriteriaScores.reduce((sum, val) => sum! + val!, 0)
-                            : 0;
+          return (
+            <div className="space-y-3">
+              {/* Sort Control Bar */}
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase">
+                  Category Score Matrix
+                </span>
+                <div className="flex items-center gap-1 bg-card/80 border border-border p-1 rounded-xl text-xs font-medium">
+                  <span className="text-muted-foreground/70 text-[10px] font-mono uppercase px-2">Order by:</span>
+                  <button
+                    onClick={() => setCategorySortBy("candidateNumber")}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${categorySortBy === "candidateNumber"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      }`}
+                  >
+                    Candidate #
+                  </button>
+                  <button
+                    onClick={() => setCategorySortBy("rank")}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${categorySortBy === "rank"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      }`}
+                  >
+                    Rank
+                  </button>
+                </div>
+              </div>
 
-                          return (
-                            <td key={j.id} className="py-4 px-6 text-center">
-                              {isComplete ? (
-                                <button
-                                  onClick={() => openEditModal(c, j, selectedCategory)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group"
-                                  title="Click to edit score"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span>{Math.round(totalValue)}</span>
-                                  <Edit3 className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => openEditModal(c, j, selectedCategory)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground border border-white/10 text-xs font-medium transition-all cursor-pointer group"
-                                  title="Click to manually enter score"
-                                >
-                                  <Hourglass className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-amber-400 transition-colors" />
-                                  <span>Pending</span>
-                                </button>
-                              )}
-                            </td>
-                          );
-                        })}
+              <div className="bg-[#121318] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/2">
+                        <th
+                          onClick={() => setCategorySortBy("candidateNumber")}
+                          className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground hover:text-white uppercase w-64 cursor-pointer select-none"
+                        >
+                          CANDIDATE {categorySortBy === "candidateNumber" && "↓"}
+                        </th>
+                        {data.judges.map((j, idx) => (
+                          <th
+                            key={j.id}
+                            className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase text-center"
+                          >
+                            JUDGE {idx + 1}
+                            <span className="block text-[9px] font-normal text-muted-foreground/60 truncate max-w-30 mx-auto mt-0.5">
+                              {j.name}
+                            </span>
+                          </th>
+                        ))}
+                        <th
+                          onClick={() => setCategorySortBy("rank")}
+                          className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-amber-400 hover:text-amber-300 uppercase text-center w-36 cursor-pointer select-none"
+                        >
+                          TOTAL SCORE
+                        </th>
+                        <th
+                          onClick={() => setCategorySortBy("rank")}
+                          className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground hover:text-white uppercase text-center w-24 cursor-pointer select-none"
+                        >
+                          RANK {categorySortBy === "rank" && "↓"}
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {displayCandidates.map((c) => {
+                        return (
+                          <tr key={c.id} className="hover:bg-white/2 transition-colors">
+                            {/* Candidate Info Cell */}
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-3.5">
+                                <img
+                                  src={c.photoUrl || getFallback(c.name)}
+                                  alt={c.name}
+                                  className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-white text-sm truncate">{c.name}</h4>
+                                  <p className="text-xs font-mono font-bold text-amber-400 mt-0.5">
+                                    #{String(c.candidateNumber).padStart(2, "0")}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Judge Score Cells */}
+                            {data.judges.map((j) => {
+                              const judgeCriteriaScores = selectedCategory.criteria.map((cr) => {
+                                const scoreRow = data.scores.find(
+                                  (s) =>
+                                    s.candidate_id === c.id &&
+                                    s.judge_id === j.id &&
+                                    s.criteria_id === cr.id
+                                );
+                                return scoreRow ? Number(scoreRow.value) : null;
+                              });
+
+                              const isComplete = judgeCriteriaScores.every((s) => s !== null);
+                              const totalValue = isComplete
+                                ? judgeCriteriaScores.reduce((sum, val) => sum! + val!, 0)
+                                : 0;
+
+                              return (
+                                <td key={j.id} className="py-4 px-6 text-center">
+                                  {isComplete ? (
+                                    <button
+                                      onClick={() => openEditModal(c, j, selectedCategory)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group"
+                                      title="Click to edit score"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>{Math.round(totalValue)}</span>
+                                      <Edit3 className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => openEditModal(c, j, selectedCategory)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground border border-white/10 text-xs font-medium transition-all cursor-pointer group"
+                                      title="Click to manually enter score"
+                                    >
+                                      <Hourglass className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-amber-400 transition-colors" />
+                                      <span>Pending</span>
+                                    </button>
+                                  )}
+                                </td>
+                              );
+                            })}
+
+                            {/* Category Total Score Cell */}
+                            <td className="py-4 px-6 text-center font-mono font-black text-amber-400 text-base">
+                              {c.catTotal.toFixed(2)}
+                            </td>
+
+                            {/* Plain Text Rank Cell (Last Column) */}
+                            <td className="py-4 px-6 text-center font-mono font-bold text-foreground text-sm">
+                              {c.rank}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
 
       {/* Manual Score Entry / Override Dialog with Sliders matching Judge Page */}

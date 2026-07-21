@@ -15,6 +15,7 @@ import { initDatabase, initSchema } from "@pageant/database";
 import type { ServerToClientEvents, ClientToServerEvents } from "@pageant/types";
 
 import { pageantRoutes } from "./routes/pageants.js";
+import { segmentRoutes } from "./routes/segments.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { candidateRoutes } from "./routes/candidates.js";
 import { judgeRoutes } from "./routes/judges.js";
@@ -76,6 +77,7 @@ setupSocketHandlers(io);
 // ── API Routes ───────────────────────────────────────────────
 
 app.use("/api/pageants", pageantRoutes);
+app.use("/api", segmentRoutes);
 app.use("/api", categoryRoutes);
 app.use("/api", candidateRoutes);
 app.use("/api", judgeRoutes);

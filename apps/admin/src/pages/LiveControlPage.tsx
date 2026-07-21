@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { ArrowLeft, Radio, Eye, ChevronRight, Clapperboard } from "lucide-react";
-import type { Candidate, Category, PresentationState } from "@pageant/types";
-import { toast } from "sonner";
+import { ArrowLeft, Radio, Eye, EyeOff, ChevronRight, Clapperboard, Layers } from "lucide-react";
+import type { Candidate, Category, PresentationState, SegmentWithCategories } from "@pageant/types";
 
 const API_BASE = "/api";
 const SOCKET_URL = window.location.origin;
@@ -11,7 +10,7 @@ const SOCKET_URL = window.location.origin;
 interface ToggleSwitchProps {
   checked: boolean;
   onChange: () => void;
-  color?: "emerald" | "amber" | "purple";
+  color?: "emerald" | "amber" | "purple" | "rose";
 }
 
 function ToggleSwitch({ checked, onChange, color = "emerald" }: ToggleSwitchProps) {
@@ -19,6 +18,7 @@ function ToggleSwitch({ checked, onChange, color = "emerald" }: ToggleSwitchProp
     emerald: "bg-emerald-500",
     amber: "bg-amber-500",
     purple: "bg-purple-600",
+    rose: "bg-rose-500",
   }[color];
 
   return (
@@ -39,8 +39,8 @@ function ToggleSwitch({ checked, onChange, color = "emerald" }: ToggleSwitchProp
 export function LiveControlPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [segments, setSegments] = useState<SegmentWithCategories[]>([]);
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [presentation, setPresentation] = useState<PresentationState | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -50,25 +50,45 @@ export function LiveControlPage() {
     newSocket.on("presentation:update", (state: PresentationState) => {
       if (state.pageantId === id) setPresentation(state);
     });
+    newSocket.on("segment:lock-update", (payload) => {
+      setSegments((prev) =>
+        prev.map((s) => (s.id === payload.segmentId ? { ...s, isLocked: payload.isLocked, isHidden: payload.isLocked } : s))
+      );
+    });
+    newSocket.on("segment:hide-update", (payload) => {
+      setSegments((prev) =>
+        prev.map((s) => (s.id === payload.segmentId ? { ...s, isHidden: payload.isHidden, isLocked: payload.isHidden } : s))
+      );
+    });
+    newSocket.on("category:candidates-update", () => fetchData());
     return () => {
       newSocket.close();
     };
   }, [id]);
 
   const fetchData = async () => {
-    const [candRes, catRes, presRes] = await Promise.all([
-      fetch(`${API_BASE}/pageants/${id}/candidates`, { credentials: "include" }),
-      fetch(`${API_BASE}/pageants/${id}/categories`, { credentials: "include" }),
+    const [segRes, presRes] = await Promise.all([
+      fetch(`${API_BASE}/pageants/${id}/segments`, { credentials: "include" }),
       fetch(`${API_BASE}/pageants/${id}/presentation`, { credentials: "include" }),
     ]);
-    const [candData, catData, presData] = await Promise.all([
-      candRes.json(),
-      catRes.json(),
+    const [segData, presData] = await Promise.all([
+      segRes.json(),
       presRes.json(),
     ]);
-    if (candData.success) setCandidates(candData.data);
-    if (catData.success) setCategories(catData.data);
-    if (presData.success) setPresentation(presData.data);
+    if (segData.success) {
+      setSegments(segData.data);
+      // Auto-select first segment if none selected
+      if (segData.data.length > 0 && !activeSegmentId) {
+        const initialSegId = presData.data?.activeSegmentId || segData.data[0].id;
+        setActiveSegmentId(initialSegId);
+      }
+    }
+    if (presData.success) {
+      setPresentation(presData.data);
+      if (presData.data?.activeSegmentId) {
+        setActiveSegmentId(presData.data.activeSegmentId);
+      }
+    }
   };
 
   useEffect(() => {
@@ -85,8 +105,43 @@ export function LiveControlPage() {
     socket?.emit("admin:set-presentation", { ...updates, pageantId: id });
   };
 
+  const handleSegmentSelect = (segId: string) => {
+    setActiveSegmentId(segId);
+    updatePresentation({ activeSegmentId: segId, activeCategoryId: null, activeCandidateId: null });
+  };
+
+  // Derive data from selected segment
+  const selectedSegment = segments.find((s) => s.id === activeSegmentId);
+  const categories: Category[] = selectedSegment?.categories || [];
+
+  const isSegmentHidden = selectedSegment?.isHidden ?? selectedSegment?.isLocked ?? false;
+
+  const toggleSegmentHide = async () => {
+    if (!selectedSegment) return;
+    const newHideState = !isSegmentHidden;
+
+    await fetch(`${API_BASE}/segments/${selectedSegment.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ isHidden: newHideState, isLocked: newHideState }),
+    });
+
+    setSegments((prev) =>
+      prev.map((s) => (s.id === selectedSegment.id ? { ...s, isHidden: newHideState, isLocked: newHideState } : s))
+    );
+
+    socket?.emit("admin:toggle-segment-hide", {
+      segmentId: selectedSegment.id,
+      isHidden: newHideState,
+    });
+  };
+
+  // Get candidates for the active category from the segment data
+  const activeCategory = selectedSegment?.categories.find((c) => c.id === presentation?.activeCategoryId);
+  const candidates: Candidate[] = activeCategory?.candidates || [];
+
   const activeCandidate = candidates.find((c) => c.id === presentation?.activeCandidateId);
-  const activeCategory = categories.find((c) => c.id === presentation?.activeCategoryId);
 
   const getFallback = (name: string) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=256&bold=true`;
@@ -113,6 +168,12 @@ export function LiveControlPage() {
 
           {/* Live Status Badge */}
           <div className="flex items-center gap-2">
+            {isSegmentHidden && (
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold font-mono tracking-wider">
+                <EyeOff className="w-3 h-3" />
+                HIDDEN
+              </div>
+            )}
             {!isIdle ? (
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold font-mono tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
@@ -130,8 +191,38 @@ export function LiveControlPage() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        {/* Segment Selector */}
+        {segments.length > 0 && (
+          <div>
+            <h2 className="text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase mb-3">
+              ACTIVE SEGMENT
+            </h2>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {segments.map((seg) => {
+                const isActive = activeSegmentId === seg.id;
+                const segHidden = seg.isHidden || seg.isLocked;
+
+                return (
+                  <button
+                    key={seg.id}
+                    onClick={() => handleSegmentSelect(seg.id)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${isActive
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "bg-card text-muted-foreground border border-border hover:bg-muted hover:text-foreground"
+                      }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    {seg.name}
+                    {segHidden && <EyeOff className="w-3.5 h-3.5 text-amber-400 ml-1 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Top Controls Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Control 1: Set Idle */}
           <div className="bg-[#15171e] border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-3.5">
@@ -181,6 +272,31 @@ export function LiveControlPage() {
               color="amber"
             />
           </div>
+
+          {/* Control 3: Hide/Unhide Segment */}
+          <div className="bg-[#15171e] border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`p-3 rounded-xl border ${isSegmentHidden
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  }`}
+              >
+                {isSegmentHidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Segment Visibility</h3>
+                <p className="text-[10px] font-mono font-medium tracking-wider text-muted-foreground uppercase mt-0.5">
+                  {isSegmentHidden ? "HIDDEN FROM JUDGES" : "VISIBLE TO JUDGES"}
+                </p>
+              </div>
+            </div>
+            <ToggleSwitch
+              checked={!isSegmentHidden}
+              onChange={toggleSegmentHide}
+              color="emerald"
+            />
+          </div>
         </div>
 
         {/* Main Grid Section */}
@@ -216,6 +332,11 @@ export function LiveControlPage() {
                     </button>
                   );
                 })}
+                {categories.length === 0 && (
+                  <p className="text-xs text-muted-foreground/50 italic py-2">
+                    {segments.length === 0 ? "No segments created yet" : "No categories in this segment"}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -242,7 +363,9 @@ export function LiveControlPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic py-2">No candidate on stage</p>
+                <p className="text-xs text-muted-foreground italic py-2">
+                  {activeCategory ? "Select a candidate below" : "Select a category first"}
+                </p>
               )}
             </div>
           </div>
@@ -250,8 +373,16 @@ export function LiveControlPage() {
           {/* Right Area: Candidate Selector */}
           <div className="lg:col-span-9">
             <h2 className="text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase mb-3">
-              CANDIDATE SELECTOR — TAP TO PUT ON STAGE
+              {activeCategory
+                ? `CANDIDATES IN "${activeCategory.name.toUpperCase()}" — TAP TO PUT ON STAGE`
+                : "CANDIDATE SELECTOR — SELECT A CATEGORY FIRST"}
             </h2>
+
+            {activeCategory && candidates.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground/50 text-sm">
+                No candidates assigned to this category yet
+              </div>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {candidates.map((c) => {
@@ -291,6 +422,12 @@ export function LiveControlPage() {
                 );
               })}
             </div>
+
+            {!activeCategory && (
+              <div className="text-center py-12 text-muted-foreground/50 text-sm">
+                Select a category to see assigned candidates
+              </div>
+            )}
           </div>
         </div>
       </main>

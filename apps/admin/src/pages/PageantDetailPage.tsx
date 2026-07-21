@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, MapPin, ClipboardList, Users, Scale, Clapperboard, Trophy, AlertTriangle, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Layers, Users, Scale, Clapperboard, Trophy, AlertTriangle, Trash2 } from "lucide-react";
 import type { Pageant } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card, CardContent } from "@pageant/ui/components/card";
@@ -72,7 +72,7 @@ export function PageantDetailPage() {
   if (!pageant) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="h-8 w-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   const navItems = [
-    { label: "Categories & Criteria", path: `/pageants/${id}/categories`, icon: ClipboardList },
+    { label: "Segments", path: `/pageants/${id}/segments`, icon: Layers },
     { label: "Candidates", path: `/pageants/${id}/candidates`, icon: Users },
     { label: "Judges", path: `/pageants/${id}/judges`, icon: Scale },
     { label: "Live Control", path: `/pageants/${id}/live`, icon: Clapperboard },

@@ -3,20 +3,20 @@
 // ============================================================
 
 import { Router } from "express";
-import { CategoryQueries, CriteriaQueries } from "@pageant/database";
+import { CategoryQueries, CriteriaQueries, CategoryCandidateQueries } from "@pageant/database";
 import { requireAdmin } from "../middleware/auth.js";
 
 export const categoryRoutes = Router();
 
 // ── Categories ───────────────────────────────────────────────
 
-// List categories for a pageant (with criteria)
+// List categories for a segment (with criteria and assigned candidates)
 categoryRoutes.get(
-  "/pageants/:pageantId/categories",
+  "/segments/:segmentId/categories",
   async (req, res) => {
     try {
-      const categories = await CategoryQueries.getWithCriteria(
-        req.params.pageantId as string
+      const categories = await CategoryQueries.getWithCandidates(
+        req.params.segmentId as string
       );
       res.json({ success: true, data: categories });
     } catch (err) {
@@ -25,13 +25,13 @@ categoryRoutes.get(
   }
 );
 
-// Create category
+// Create category under a segment
 categoryRoutes.post(
-  "/pageants/:pageantId/categories",
+  "/segments/:segmentId/categories",
   requireAdmin,
   async (req, res) => {
     try {
-      const { name, order, weight } = req.body;
+      const { name, order, weight, candidateIds } = req.body;
       if (!name || weight === undefined) {
         res.status(400).json({
           success: false,
@@ -39,10 +39,11 @@ categoryRoutes.post(
         });
         return;
       }
-      const category = await CategoryQueries.create(req.params.pageantId as string, {
+      const category = await CategoryQueries.create(req.params.segmentId as string, {
         name,
         order: order ?? 0,
         weight,
+        candidateIds,
       });
       res.status(201).json({ success: true, data: category });
     } catch (err) {
@@ -78,6 +79,65 @@ categoryRoutes.delete("/categories/:id", requireAdmin, async (req, res) => {
     res.status(500).json({ success: false, error: String(err) });
   }
 });
+
+// ── Category Candidate Assignment ────────────────────────────
+
+// Get candidates assigned to a category
+categoryRoutes.get(
+  "/categories/:categoryId/candidates",
+  async (req, res) => {
+    try {
+      const candidates = await CategoryCandidateQueries.getByCategoryId(
+        req.params.categoryId as string
+      );
+      res.json({ success: true, data: candidates });
+    } catch (err) {
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  }
+);
+
+// Set candidates assigned to a category (bulk replace)
+categoryRoutes.put(
+  "/categories/:categoryId/candidates",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { candidateIds } = req.body;
+      if (!Array.isArray(candidateIds)) {
+        res.status(400).json({
+          success: false,
+          error: "candidateIds array is required",
+        });
+        return;
+      }
+      await CategoryCandidateQueries.setCandidates(
+        req.params.categoryId as string,
+        candidateIds
+      );
+      const candidates = await CategoryCandidateQueries.getByCategoryId(
+        req.params.categoryId as string
+      );
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("category:candidates-update", {
+          categoryId: req.params.categoryId as string,
+          candidateIds,
+        });
+        io.emit("scores:update", {
+          candidateId: "",
+          categoryId: req.params.categoryId as string,
+          judgeScores: [],
+        });
+      }
+
+      res.json({ success: true, data: candidates });
+    } catch (err) {
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  }
+);
 
 // ── Criteria ─────────────────────────────────────────────────
 

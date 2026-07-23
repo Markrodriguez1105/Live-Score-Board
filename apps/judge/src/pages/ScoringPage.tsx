@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { Crown, Footprints, Check, Clock, CheckCircle2, RefreshCw, PhoneCall, Lock, EyeOff, Zap } from "lucide-react";
+import { Crown, Footprints, Check, Clock, CheckCircle2, RefreshCw, PhoneCall, Lock, EyeOff, Zap, Hourglass } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
 import { Dialog, DialogContent } from "@pageant/ui/components/dialog";
@@ -697,7 +697,7 @@ export function ScoringPage() {
                       </>
                     ) : saveStatus === "saved" ? (
                       <>
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Submitted ✓
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Submitted
                       </>
                     ) : saveStatus === "error" ? (
                       <>

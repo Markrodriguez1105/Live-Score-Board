@@ -29,7 +29,7 @@ segmentRoutes.post(
   requireAdmin,
   async (req, res) => {
     try {
-      const { name, order } = req.body;
+      const { name, order, isSimultaneous } = req.body;
       if (!name) {
         res.status(400).json({
           success: false,
@@ -40,6 +40,7 @@ segmentRoutes.post(
       const segment = await SegmentQueries.create(req.params.pageantId as string, {
         name,
         order: order ?? 0,
+        isSimultaneous: !!isSimultaneous,
       });
       res.status(201).json({ success: true, data: segment });
     } catch (err) {
@@ -47,6 +48,20 @@ segmentRoutes.post(
     }
   }
 );
+
+// Get single segment
+segmentRoutes.get("/segments/:id", async (req, res) => {
+  try {
+    const segment = await SegmentQueries.getById(req.params.id as string);
+    if (!segment) {
+      res.status(404).json({ success: false, error: "Segment not found" });
+      return;
+    }
+    res.json({ success: true, data: segment });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
+});
 
 // Update segment
 segmentRoutes.put("/segments/:id", requireAdmin, async (req, res) => {

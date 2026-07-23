@@ -63,6 +63,7 @@ function toSegment(row: RowDataPacket): Segment {
     order: row.order,
     isLocked: !!row.is_locked || !!row.is_hidden,
     isHidden: !!row.is_hidden || !!row.is_locked,
+    isSimultaneous: !!row.is_simultaneous,
     createdAt: row.created_at,
   };
 }
@@ -74,6 +75,7 @@ function toCategory(row: RowDataPacket): Category {
     name: row.name,
     order: row.order,
     weight: Number(row.weight),
+    isSimultaneous: !!row.is_simultaneous,
   };
 }
 
@@ -96,6 +98,11 @@ function toCandidate(row: RowDataPacket): Candidate {
     name: row.name,
     candidateNumber: row.candidate_number,
     photoUrl: row.photo_url ?? undefined,
+    barangay: row.barangay ?? undefined,
+    municipality: row.municipality ?? undefined,
+    province: row.province ?? undefined,
+    region: row.region ?? undefined,
+    country: row.country ?? undefined,
   };
 }
 
@@ -105,10 +112,11 @@ function toJudge(row: RowDataPacket): Judge {
     pageantId: row.pageant_id,
     name: row.name,
     pin: row.pin,
+    judgeNumber: row.judge_number,
   };
 }
 
-function toScore(row: RowDataPacket): Score & { judgeName?: string; criteriaWeight?: number; criteriaMaxScore?: number } {
+function toScore(row: RowDataPacket): Score & { judgeName?: string; judgeNumber?: number; criteriaWeight?: number; criteriaMaxScore?: number } {
   return {
     id: row.id,
     judgeId: row.judge_id,
@@ -117,6 +125,7 @@ function toScore(row: RowDataPacket): Score & { judgeName?: string; criteriaWeig
     value: Number(row.value),
     submittedAt: row.submitted_at,
     judgeName: row.judge_name ?? undefined,
+    judgeNumber: row.judge_number !== undefined ? Number(row.judge_number) : undefined,
     criteriaWeight: row.criteria_weight !== undefined ? Number(row.criteria_weight) : undefined,
     criteriaMaxScore: row.criteria_max_score !== undefined ? Number(row.criteria_max_score) : undefined,
   };
@@ -131,6 +140,10 @@ function toPresentationState(row: RowDataPacket): PresentationState {
     isIdle: !!row.is_idle,
     showScores: !!row.show_scores,
     showJudgeBreakdown: !!row.show_judge_breakdown,
+    displayMode: row.display_mode ?? "default",
+    scorePosition: row.score_position ?? "bottom",
+    showElements: row.show_elements ?? "all",
+    scoreLayout: row.score_layout ?? "grid",
   };
 }
 
@@ -222,9 +235,10 @@ export const SegmentQueries = {
   async create(pageantId: string, data: CreateSegment): Promise<Segment> {
     const id = uuidv4();
     const hiddenVal = (data.isHidden || data.isLocked) ? 1 : 0;
+    const simultaneousVal = data.isSimultaneous ? 1 : 0;
     await execute(
-      "INSERT INTO segments (id, pageant_id, name, `order`, is_locked, is_hidden) VALUES (?, ?, ?, ?, ?, ?)",
-      [id, pageantId, data.name, data.order, hiddenVal, hiddenVal]
+      "INSERT INTO segments (id, pageant_id, name, `order`, is_locked, is_hidden, is_simultaneous) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [id, pageantId, data.name, data.order, hiddenVal, hiddenVal, simultaneousVal]
     );
     return (await SegmentQueries.getById(id))!;
   },
@@ -235,6 +249,10 @@ export const SegmentQueries = {
 
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
     if (data.order !== undefined) { fields.push("`order` = ?"); values.push(data.order); }
+    if (data.isSimultaneous !== undefined) {
+      fields.push("is_simultaneous = ?");
+      values.push(data.isSimultaneous ? 1 : 0);
+    }
     if (data.isHidden !== undefined) {
       fields.push("is_hidden = ?, is_locked = ?");
       values.push(data.isHidden ? 1 : 0, data.isHidden ? 1 : 0);
@@ -348,8 +366,8 @@ export const CategoryQueries = {
   async create(segmentId: string, data: CreateCategory): Promise<Category> {
     const id = uuidv4();
     await execute(
-      "INSERT INTO categories (id, segment_id, name, `order`, weight) VALUES (?, ?, ?, ?, ?)",
-      [id, segmentId, data.name, data.order, data.weight]
+      "INSERT INTO categories (id, segment_id, name, `order`, weight, is_simultaneous) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, segmentId, data.name, data.order, data.weight, data.isSimultaneous ? 1 : 0]
     );
     // If candidateIds were provided, assign them
     if (data.candidateIds && data.candidateIds.length > 0) {
@@ -365,6 +383,7 @@ export const CategoryQueries = {
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
     if (data.order !== undefined) { fields.push("`order` = ?"); values.push(data.order); }
     if (data.weight !== undefined) { fields.push("weight = ?"); values.push(data.weight); }
+    if (data.isSimultaneous !== undefined) { fields.push("is_simultaneous = ?"); values.push(data.isSimultaneous ? 1 : 0); }
 
     if (fields.length === 0 && !data.candidateIds) return CategoryQueries.getById(id);
 
@@ -378,6 +397,16 @@ export const CategoryQueries = {
     }
 
     return CategoryQueries.getById(id);
+  },
+
+  async reorder(segmentId: string, categoryIds: string[]): Promise<boolean> {
+    for (let i = 0; i < categoryIds.length; i++) {
+      await execute(
+        "UPDATE categories SET `order` = ? WHERE id = ? AND segment_id = ?",
+        [i + 1, categoryIds[i], segmentId]
+      );
+    }
+    return true;
   },
 
   async delete(id: string): Promise<boolean> {
@@ -504,8 +533,18 @@ export const CandidateQueries = {
   async create(pageantId: string, data: CreateCandidate): Promise<Candidate> {
     const id = uuidv4();
     await execute(
-      "INSERT INTO candidates (id, pageant_id, name, candidate_number) VALUES (?, ?, ?, ?)",
-      [id, pageantId, data.name, data.candidateNumber]
+      "INSERT INTO candidates (id, pageant_id, name, candidate_number, barangay, municipality, province, region, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        id,
+        pageantId,
+        data.name,
+        data.candidateNumber,
+        data.barangay ?? null,
+        data.municipality ?? null,
+        data.province ?? null,
+        data.region ?? null,
+        data.country ?? null,
+      ]
     );
     return (await CandidateQueries.getById(id))!;
   },
@@ -517,6 +556,11 @@ export const CandidateQueries = {
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
     if (data.candidateNumber !== undefined) { fields.push("candidate_number = ?"); values.push(data.candidateNumber); }
     if (data.photoUrl !== undefined) { fields.push("photo_url = ?"); values.push(data.photoUrl); }
+    if (data.barangay !== undefined) { fields.push("barangay = ?"); values.push(data.barangay); }
+    if (data.municipality !== undefined) { fields.push("municipality = ?"); values.push(data.municipality); }
+    if (data.province !== undefined) { fields.push("province = ?"); values.push(data.province); }
+    if (data.region !== undefined) { fields.push("region = ?"); values.push(data.region); }
+    if (data.country !== undefined) { fields.push("country = ?"); values.push(data.country); }
 
     if (fields.length === 0) return CandidateQueries.getById(id);
 
@@ -538,7 +582,7 @@ export const CandidateQueries = {
 export const JudgeQueries = {
   async getByPageantId(pageantId: string): Promise<Judge[]> {
     const rows = await query(
-      "SELECT * FROM judges WHERE pageant_id = ? ORDER BY name ASC",
+      "SELECT * FROM judges WHERE pageant_id = ? ORDER BY judge_number ASC, name ASC",
       [pageantId]
     );
     return rows.map(toJudge);
@@ -556,9 +600,16 @@ export const JudgeQueries = {
 
   async create(pageantId: string, data: CreateJudge): Promise<Judge> {
     const id = uuidv4();
+    const maxRows = await query(
+      "SELECT MAX(judge_number) as max_num FROM judges WHERE pageant_id = ?",
+      [pageantId]
+    );
+    const nextNum = (maxRows[0]?.max_num || 0) + 1;
+    const judgeNumber = data.judgeNumber || nextNum;
+
     await execute(
-      "INSERT INTO judges (id, pageant_id, name, pin) VALUES (?, ?, ?, ?)",
-      [id, pageantId, data.name, data.pin]
+      "INSERT INTO judges (id, pageant_id, name, pin, judge_number) VALUES (?, ?, ?, ?, ?)",
+      [id, pageantId, data.name, data.pin, judgeNumber]
     );
     return (await JudgeQueries.getById(id))!;
   },
@@ -578,6 +629,10 @@ export const JudgeQueries = {
     if (data.pin !== undefined) {
       fields.push("pin = ?");
       values.push(data.pin);
+    }
+    if (data.judgeNumber !== undefined) {
+      fields.push("judge_number = ?");
+      values.push(data.judgeNumber);
     }
     if (fields.length === 0) return JudgeQueries.getById(id);
     values.push(id);
@@ -599,7 +654,7 @@ export const ScoreQueries = {
     categoryId: string
   ): Promise<Score[]> {
     const rows = await query(
-      `SELECT s.*, j.name as judge_name, cr.weight as criteria_weight, cr.max_score as criteria_max_score FROM scores s
+      `SELECT s.*, j.name as judge_name, j.judge_number as judge_number, cr.weight as criteria_weight, cr.max_score as criteria_max_score FROM scores s
        JOIN criteria cr ON s.criteria_id = cr.id
        JOIN judges j ON s.judge_id = j.id
        WHERE s.candidate_id = ? AND cr.category_id = ?`,
@@ -693,6 +748,7 @@ export const ScoreQueries = {
          s.value,
          s.judge_id,
          j.name as judge_name,
+         j.judge_number as judge_number,
          s.candidate_id,
          c.name as candidate_name,
          c.candidate_number,
@@ -795,6 +851,22 @@ export const PresentationQueries = {
     if (data.showJudgeBreakdown !== undefined) {
       fields.push("show_judge_breakdown = ?");
       values.push(data.showJudgeBreakdown);
+    }
+    if (data.displayMode !== undefined) {
+      fields.push("display_mode = ?");
+      values.push(data.displayMode);
+    }
+    if (data.scorePosition !== undefined) {
+      fields.push("score_position = ?");
+      values.push(data.scorePosition);
+    }
+    if (data.showElements !== undefined) {
+      fields.push("show_elements = ?");
+      values.push(data.showElements);
+    }
+    if (data.scoreLayout !== undefined) {
+      fields.push("score_layout = ?");
+      values.push(data.scoreLayout);
     }
 
     if (fields.length === 0) return PresentationQueries.get(pageantId);

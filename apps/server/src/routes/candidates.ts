@@ -44,7 +44,7 @@ candidateRoutes.post(
   requireAdmin,
   async (req, res) => {
     try {
-      const { name, candidateNumber } = req.body;
+      const { name, candidateNumber, barangay, municipality, province, region, country } = req.body;
       if (!name || candidateNumber === undefined) {
         res.status(400).json({
           success: false,
@@ -55,6 +55,11 @@ candidateRoutes.post(
       const candidate = await CandidateQueries.create(req.params.pageantId as string, {
         name,
         candidateNumber,
+        barangay,
+        municipality,
+        province,
+        region,
+        country,
       });
       res.status(201).json({ success: true, data: candidate });
     } catch (err) {

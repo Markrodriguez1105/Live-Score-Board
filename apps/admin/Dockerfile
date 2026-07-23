@@ -9,6 +9,7 @@ COPY packages/ui/ packages/ui/
 COPY apps/admin/ apps/admin/
 
 RUN npm install --workspaces --include-workspace-root
+RUN npm install lightningcss-linux-x64-musl
 RUN npm run build -w apps/admin
 
 FROM nginx:alpine

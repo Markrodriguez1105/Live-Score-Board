@@ -19,7 +19,7 @@ export function SegmentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Segment | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [form, setForm] = useState<CreateSegment>({ name: "", order: 0 });
+  const [form, setForm] = useState<CreateSegment>({ name: "", order: 0, isSimultaneous: false });
 
   const fetchSegments = async () => {
     const res = await fetch(`${API_BASE}/pageants/${id}/segments`, { credentials: "include" });
@@ -27,7 +27,22 @@ export function SegmentsPage() {
     if (data.success) setSegments(data.data);
   };
 
-  useEffect(() => { fetchSegments(); }, [id]);
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/pageants/admin/session`, { credentials: "include" });
+        const d = await res.json();
+        if (!d.success || !d.data?.isAdmin) {
+          navigate("/");
+          return;
+        }
+        fetchSegments();
+      } catch {
+        navigate("/");
+      }
+    };
+    checkSession();
+  }, [id, navigate]);
 
   const toggleHideSegment = async (seg: Segment) => {
     const newHideState = !(seg.isHidden || seg.isLocked);
@@ -47,7 +62,7 @@ export function SegmentsPage() {
       body: JSON.stringify({ ...form, order: segments.length + 1 }),
     });
     setShowCreateModal(false);
-    setForm({ name: "", order: 0 });
+    setForm({ name: "", order: 0, isSimultaneous: false });
     fetchSegments();
   };
 
@@ -56,7 +71,7 @@ export function SegmentsPage() {
     if (!editSegmentData) return;
     await fetch(`${API_BASE}/segments/${editSegmentData.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify({ name: editSegmentData.name }),
+      body: JSON.stringify({ name: editSegmentData.name, isSimultaneous: !!editSegmentData.isSimultaneous }),
     });
     setEditSegmentData(null);
     fetchSegments();
@@ -112,9 +127,14 @@ export function SegmentsPage() {
                 {/* Segment Header */}
                 <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-card/50">
                   <div>
-                    <h3 className="font-bold text-foreground text-base flex items-center gap-2">
+                    <h3 className="font-bold text-foreground text-base flex items-center gap-2 flex-wrap">
                       <Layers className="w-4 h-4 text-primary" />
                       {seg.name}
+                      {seg.isSimultaneous && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          ⚡ SIMULTANEOUS SCORING
+                        </span>
+                      )}
                       {isHidden && (
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
                           <EyeOff className="w-3 h-3" /> HIDDEN
@@ -199,6 +219,18 @@ export function SegmentsPage() {
                 required
               />
             </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="seg-simultaneous"
+                checked={!!form.isSimultaneous}
+                onChange={(e) => setForm({ ...form, isSimultaneous: e.target.checked })}
+                className="w-4 h-4 accent-primary rounded cursor-pointer"
+              />
+              <Label htmlFor="seg-simultaneous" className="text-xs cursor-pointer font-medium">
+                ⚡ Simultaneous Category Scoring (Judges score all categories in this segment at the same time)
+              </Label>
+            </div>
             <Button type="submit" className="w-full py-3">Add Segment</Button>
           </form>
         </DialogContent>
@@ -220,6 +252,18 @@ export function SegmentsPage() {
                   onChange={(e) => setEditSegmentData({ ...editSegmentData, name: e.target.value })}
                   required
                 />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="edit-seg-simultaneous"
+                  checked={!!editSegmentData.isSimultaneous}
+                  onChange={(e) => setEditSegmentData({ ...editSegmentData, isSimultaneous: e.target.checked })}
+                  className="w-4 h-4 accent-primary rounded cursor-pointer"
+                />
+                <Label htmlFor="edit-seg-simultaneous" className="text-xs cursor-pointer font-medium">
+                  ⚡ Simultaneous Category Scoring (Judges score all categories in this segment at the same time)
+                </Label>
               </div>
               <div className="flex gap-2 justify-end mt-4">
                 <Button type="button" variant="ghost" onClick={() => setEditSegmentData(null)}>Cancel</Button>

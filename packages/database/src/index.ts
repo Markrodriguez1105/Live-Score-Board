@@ -58,7 +58,7 @@ export function getPool(): mysql.Pool {
  */
 export async function query<T extends mysql.RowDataPacket[]>(
   sql: string,
-  params?: unknown[]
+  params?: any[]
 ): Promise<T> {
   const p = getPool();
   const [rows] = await p.execute<T>(sql, params);
@@ -70,7 +70,7 @@ export async function query<T extends mysql.RowDataPacket[]>(
  */
 export async function execute(
   sql: string,
-  params?: unknown[]
+  params?: any[]
 ): Promise<mysql.ResultSetHeader> {
   const p = getPool();
   const [result] = await p.execute<mysql.ResultSetHeader>(sql, params);

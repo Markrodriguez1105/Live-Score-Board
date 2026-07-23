@@ -6,6 +6,7 @@ COPY packages/types/ packages/types/
 COPY packages/ui/ packages/ui/
 COPY apps/judge/ apps/judge/
 RUN npm install --workspaces --include-workspace-root
+RUN npm install lightningcss-linux-x64-musl
 RUN npm run build -w apps/judge
 
 FROM nginx:alpine

@@ -7,6 +7,7 @@
     "apps/*"
   ],
   "scripts": {
+    "start": "docker compose up --build",
     "dev": "concurrently -n server,admin,view,tab,judge -c blue,green,yellow,magenta,cyan \"npm run dev -w apps/server\" \"npm run dev -w apps/admin\" \"npm run dev -w apps/view\" \"npm run dev -w apps/tabulator\" \"npm run dev -w apps/judge\"",
     "dev:client": "concurrently -n admin,view,tab,judge -c green,yellow,magenta,cyan \"npm run dev -w apps/admin\" \"npm run dev -w apps/view\" \"npm run dev -w apps/tabulator\" \"npm run dev -w apps/judge\"",
     "dev:server": "npm run dev -w apps/server",

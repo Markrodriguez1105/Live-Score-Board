@@ -25,13 +25,43 @@ categoryRoutes.get(
   }
 );
 
+// Reorder categories in a segment
+categoryRoutes.put(
+  "/segments/:segmentId/categories/reorder",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { categoryIds } = req.body;
+      console.log("[DEBUG] Categories reorder request received:", { segmentId: req.params.segmentId, categoryIds });
+      if (!Array.isArray(categoryIds)) {
+        res.status(400).json({ success: false, error: "categoryIds array is required" });
+        return;
+      }
+      await CategoryQueries.reorder(req.params.segmentId as string, categoryIds);
+      const categories = await CategoryQueries.getWithCandidates(req.params.segmentId as string);
+      console.log("[DEBUG] Reordered categories in DB. New order:", categories.map(c => ({ id: c.id, name: c.name, order: c.order })));
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("category:candidates-update", { segmentId: req.params.segmentId });
+        io.emit("scores:update", { segmentId: req.params.segmentId });
+      }
+
+      res.json({ success: true, data: categories });
+    } catch (err) {
+      console.error("[DEBUG] Error in categories reorder route:", err);
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  }
+);
+
 // Create category under a segment
 categoryRoutes.post(
   "/segments/:segmentId/categories",
   requireAdmin,
   async (req, res) => {
     try {
-      const { name, order, weight, candidateIds } = req.body;
+      const { name, order, weight, isSimultaneous, candidateIds } = req.body;
       if (!name || weight === undefined) {
         res.status(400).json({
           success: false,
@@ -43,6 +73,7 @@ categoryRoutes.post(
         name,
         order: order ?? 0,
         weight,
+        isSimultaneous: !!isSimultaneous,
         candidateIds,
       });
       res.status(201).json({ success: true, data: category });
@@ -59,6 +90,11 @@ categoryRoutes.put("/categories/:id", requireAdmin, async (req, res) => {
     if (!category) {
       res.status(404).json({ success: false, error: "Category not found" });
       return;
+    }
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("category:candidates-update", { segmentId: category.segmentId });
+      io.emit("scores:update", { segmentId: category.segmentId });
     }
     res.json({ success: true, data: category });
   } catch (err) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
-import { ArrowLeft, Radio, Eye, EyeOff, ChevronRight, Clapperboard, Layers } from "lucide-react";
+import { ArrowLeft, Radio, Eye, EyeOff, ChevronRight, Clapperboard, Layers, Zap } from "lucide-react";
 import type { Candidate, Category, PresentationState, SegmentWithCategories } from "@pageant/types";
 
 const API_BASE = "/api";
@@ -299,6 +299,183 @@ export function LiveControlPage() {
           </div>
         </div>
 
+        {/* Presentation & Styling Controls Section */}
+        <div className="bg-[#15171e] border border-white/10 rounded-2xl p-5 shadow-lg space-y-4">
+          <h2 className="text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase">
+            VIEWER DISPLAY CONFIGURATION
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Display Mode Selection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                Display Mode
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ displayMode: "default" })}
+                  className={`py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    (presentation?.displayMode || "default") === "default"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Default View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ displayMode: "chroma" })}
+                  className={`py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.displayMode === "chroma"
+                      ? "bg-emerald-600 border-emerald-500 text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Chroma Green Screen
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Green screen mode makes background green for chroma key overlays in OBS/vMix.
+              </p>
+            </div>
+
+            {/* Score Position Selection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                Score Display Alignment
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scorePosition: "left" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.scorePosition === "left"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Left Side
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scorePosition: "bottom" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    (presentation?.scorePosition || "bottom") === "bottom"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Bottom (Lower 3rd)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scorePosition: "right" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.scorePosition === "right"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Right Side
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Sets where candidate profile and scores align on the live projection screen.
+              </p>
+            </div>
+
+            {/* Visible Elements Selection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                Visible Elements
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ showElements: "all" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    (presentation?.showElements || "all") === "all"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Show All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ showElements: "score" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.showElements === "score"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Only Scores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ showElements: "candidate" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.showElements === "candidate"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Candidate Info
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Choose to display everything, only the score cards, or only the candidate info card.
+              </p>
+            </div>
+
+            {/* Score Display Layout Selection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                Score Display Layout
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scoreLayout: "grid" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    (presentation?.scoreLayout || "grid") === "grid"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Grid (Default)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scoreLayout: "row" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.scoreLayout === "row"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  1 Row
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updatePresentation({ scoreLayout: "column" })}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    presentation?.scoreLayout === "column"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-[#1f222b] border-white/5 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  1 Column
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Sets the layout style for judge scores: grid, single horizontal row, or single vertical column.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Main Grid Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Sidebar (Categories & On-Stage Preview) */}
@@ -310,7 +487,12 @@ export function LiveControlPage() {
               </h2>
               <div className="space-y-2">
                 {categories.map((cat) => {
-                  const isActive = presentation?.activeCategoryId === cat.id;
+                  const activeCat = categories.find((c) => c.id === presentation?.activeCategoryId);
+                  const isActiveSimultaneous = !!activeCat?.isSimultaneous;
+                  const isDirectlyActive = presentation?.activeCategoryId === cat.id;
+                  const isSimultaneousActive = isActiveSimultaneous && !!cat.isSimultaneous && activeCat?.segmentId === cat.segmentId;
+                  const isActive = isDirectlyActive || isSimultaneousActive;
+
                   return (
                     <button
                       key={cat.id}

@@ -26,9 +26,24 @@ if (!JWT_SECRET) {
 type PageantIO = Server<ClientToServerEvents, ServerToClientEvents>;
 type PageantSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
+// In-memory store of judge scoring statuses (key: judgeId:candidateId:categoryId)
+const judgeStatusMap = new Map<string, {
+  judgeId: string;
+  judgeName: string;
+  judgeNumber: number;
+  candidateId: string;
+  categoryId: string;
+  status: "unsaved" | "saved" | "pending";
+}>();
+
 export function setupSocketHandlers(io: PageantIO) {
   io.on("connection", (socket: PageantSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
+
+    // Send current judge statuses to newly connected admin clients
+    if (judgeStatusMap.size > 0) {
+      socket.emit("admin:initial-judge-statuses", Array.from(judgeStatusMap.values()));
+    }
 
     // ── Judge: Submit Score ──────────────────────────────────
     socket.on("judge:submit-score", async (payload) => {
@@ -206,6 +221,40 @@ export function setupSocketHandlers(io: PageantIO) {
         );
       } catch (err) {
         console.error("[Socket] Error processing assistance request:", err);
+      }
+    });
+
+    // ── Judge: Status Update (unsaved/saved/pending) ──────────
+    socket.on("judge:status-update", (payload) => {
+      try {
+        const token =
+          (socket.handshake.auth?.token as string) ||
+          (socket.handshake.query?.token as string);
+        if (!token) return;
+
+        const decoded = jwt.verify(token, JWT_SECRET || "") as JudgeJwtPayload;
+
+        const statusEntry = {
+          judgeId: decoded.judgeId,
+          judgeName: decoded.judgeName || "",
+          judgeNumber: decoded.judgeNumber || 0,
+          candidateId: payload.candidateId,
+          categoryId: payload.categoryId,
+          status: payload.status,
+        };
+
+        // Store in memory for new admin connections
+        const key = `${decoded.judgeId}:${payload.candidateId}:${payload.categoryId}`;
+        judgeStatusMap.set(key, statusEntry);
+
+        // Broadcast to all clients (admin will listen)
+        io.emit("judge:status-update", statusEntry);
+
+        console.log(
+          `[Socket] Judge ${decoded.judgeId} status → ${payload.status} for candidate ${payload.candidateId}`
+        );
+      } catch (err) {
+        console.error("[Socket] Error processing judge status:", err);
       }
     });
 

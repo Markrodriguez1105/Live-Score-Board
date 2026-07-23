@@ -37,6 +37,7 @@ export async function initSchema(): Promise<void> {
         \`order\` INT NOT NULL DEFAULT 0,
         is_locked BOOLEAN NOT NULL DEFAULT FALSE,
         is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+        is_simultaneous BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (pageant_id) REFERENCES pageants(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -50,6 +51,7 @@ export async function initSchema(): Promise<void> {
         name VARCHAR(255) NOT NULL,
         \`order\` INT NOT NULL DEFAULT 0,
         weight DECIMAL(5,2) NOT NULL DEFAULT 0,
+        is_simultaneous BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -129,6 +131,10 @@ export async function initSchema(): Promise<void> {
         is_idle BOOLEAN NOT NULL DEFAULT TRUE,
         show_scores BOOLEAN NOT NULL DEFAULT TRUE,
         show_judge_breakdown BOOLEAN NOT NULL DEFAULT FALSE,
+        display_mode VARCHAR(20) NOT NULL DEFAULT 'default',
+        score_position VARCHAR(20) NOT NULL DEFAULT 'bottom',
+        show_elements VARCHAR(20) NOT NULL DEFAULT 'all',
+        score_layout VARCHAR(20) NOT NULL DEFAULT 'grid',
         FOREIGN KEY (pageant_id) REFERENCES pageants(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -243,6 +249,166 @@ export async function initSchema(): Promise<void> {
       }
     } catch {
       // Column already exists or table is fresh
+    }
+
+    // Add is_simultaneous to segments if it doesn't exist
+    try {
+      const [segCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'segments' AND COLUMN_NAME = 'is_simultaneous'`
+      );
+      if (Array.isArray(segCols) && (segCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE segments ADD COLUMN is_simultaneous BOOLEAN NOT NULL DEFAULT FALSE AFTER is_hidden`
+        );
+        console.log("[DB] Added is_simultaneous to segments.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add is_simultaneous to categories if it doesn't exist
+    try {
+      const [catCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'is_simultaneous'`
+      );
+      if (Array.isArray(catCols) && (catCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE categories ADD COLUMN is_simultaneous BOOLEAN NOT NULL DEFAULT FALSE AFTER weight`
+        );
+        console.log("[DB] Added is_simultaneous to categories.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add display_mode to presentation_state if it doesn't exist
+    try {
+      const [presCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'presentation_state' AND COLUMN_NAME = 'display_mode'`
+      );
+      if (Array.isArray(presCols) && (presCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE presentation_state ADD COLUMN display_mode VARCHAR(20) NOT NULL DEFAULT 'default' AFTER show_judge_breakdown`
+        );
+        console.log("[DB] Added display_mode to presentation_state.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add score_position to presentation_state if it doesn't exist
+    try {
+      const [presCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'presentation_state' AND COLUMN_NAME = 'score_position'`
+      );
+      if (Array.isArray(presCols) && (presCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE presentation_state ADD COLUMN score_position VARCHAR(20) NOT NULL DEFAULT 'bottom' AFTER display_mode`
+        );
+        console.log("[DB] Added score_position to presentation_state.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add show_elements to presentation_state if it doesn't exist
+    try {
+      const [presCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'presentation_state' AND COLUMN_NAME = 'show_elements'`
+      );
+      if (Array.isArray(presCols) && (presCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE presentation_state ADD COLUMN show_elements VARCHAR(20) NOT NULL DEFAULT 'all' AFTER score_position`
+        );
+        console.log("[DB] Added show_elements to presentation_state.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add score_layout to presentation_state if it doesn't exist
+    try {
+      const [presCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'presentation_state' AND COLUMN_NAME = 'score_layout'`
+      );
+      if (Array.isArray(presCols) && (presCols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE presentation_state ADD COLUMN score_layout VARCHAR(20) NOT NULL DEFAULT 'grid' AFTER show_elements`
+        );
+        console.log("[DB] Added score_layout to presentation_state.");
+      }
+    } catch {
+      // Column already exists or table is fresh
+    }
+
+    // Add judge_number to judges if it doesn't exist
+    try {
+      const [cols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'judges' AND COLUMN_NAME = 'judge_number'`
+      );
+      if (Array.isArray(cols) && (cols as any[]).length === 0) {
+        await conn.execute(
+          `ALTER TABLE judges ADD COLUMN judge_number INT AFTER pin`
+        );
+        console.log("[DB] Added judge_number to judges.");
+      }
+    } catch (err) {
+      console.error("[DB] Error adding judge_number:", err);
+    }
+
+    // Backfill NULL judge_number for existing judges
+    try {
+      const [judgesRows]: any = await conn.execute(
+        "SELECT id, pageant_id, name FROM judges WHERE judge_number IS NULL ORDER BY pageant_id, name"
+      );
+      if (judgesRows && judgesRows.length > 0) {
+        console.log(`[DB] Backfilling judge_number for ${judgesRows.length} judges...`);
+        const pageantCount: Record<string, number> = {};
+        for (const j of judgesRows) {
+          if (!pageantCount[j.pageant_id]) {
+            const [maxRes]: any = await conn.execute(
+              "SELECT MAX(judge_number) as max_num FROM judges WHERE pageant_id = ?",
+              [j.pageant_id]
+            );
+            pageantCount[j.pageant_id] = (maxRes[0]?.max_num || 0) + 1;
+          } else {
+            pageantCount[j.pageant_id]++;
+          }
+          await conn.execute(
+            "UPDATE judges SET judge_number = ? WHERE id = ?",
+            [pageantCount[j.pageant_id], j.id]
+          );
+        }
+        console.log("[DB] Finished backfilling judge_number.");
+      }
+    } catch (err) {
+      console.error("[DB] Error backfilling judge_number:", err);
+    }
+
+    // Add location fields to candidates if they don't exist
+    const locCols = ["barangay", "municipality", "province", "region", "country"];
+    for (const col of locCols) {
+      try {
+        const [cols] = await conn.execute(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'candidates' AND COLUMN_NAME = '${col}'`
+        );
+        if (Array.isArray(cols) && (cols as any[]).length === 0) {
+          await conn.execute(
+            `ALTER TABLE candidates ADD COLUMN ${col} VARCHAR(255) NULL`
+          );
+          console.log(`[DB] Added column ${col} to candidates.`);
+        }
+      } catch (err) {
+        console.error(`[DB] Error adding column ${col} to candidates:`, err);
+      }
     }
 
     console.log("[DB] Schema initialized — all tables ready.");

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import {
@@ -14,6 +14,7 @@ import {
   Trash2,
   Download,
   Layers,
+  Clock,
 } from "lucide-react";
 import { Button } from "@pageant/ui/components/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@pageant/ui/components/dialog";
@@ -56,6 +57,7 @@ interface CandidateItem {
 interface JudgeItem {
   id: string;
   name: string;
+  judgeNumber: number;
 }
 
 interface RawScore {
@@ -106,7 +108,16 @@ export function ResultsPage() {
   const [clearingScore, setClearingScore] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  const fetchResults = async () => {
+  // Track real-time judge scoring statuses (key: judgeId:candidateId:categoryId)
+  const [judgeStatuses, setJudgeStatuses] = useState<Record<string, "unsaved" | "saved" | "pending">>({});
+
+  // Refs to track current selection so socket callbacks don't use stale closures
+  const activeSegmentIdRef = useRef(activeSegmentId);
+  const activeTabRef = useRef(activeTab);
+  activeSegmentIdRef.current = activeSegmentId;
+  activeTabRef.current = activeTab;
+
+  const fetchResults = useCallback(async () => {
     try {
       // Check admin session
       const sessionRes = await fetch(`${API_BASE}/pageants/admin/session`, { credentials: "include" });
@@ -121,15 +132,15 @@ export function ResultsPage() {
       const json = await res.json();
       if (json.success) {
         setData(json.data);
-        // Auto-select first segment if none selected
-        if (!activeSegmentId && json.data.segments.length > 0) {
+        // Auto-select first segment only on very first load (ref is null)
+        if (!activeSegmentIdRef.current && json.data.segments.length > 0) {
           setActiveSegmentId(json.data.segments[0].id);
         }
       }
     } catch {
       /* ignore */
     }
-  };
+  }, [id, navigate]);
 
   useEffect(() => {
     fetchResults();
@@ -143,6 +154,23 @@ export function ResultsPage() {
     newSocket.on("score:update", handleUpdate);
     newSocket.on("scores:update", handleUpdate);
     newSocket.on("category:candidates-update", handleUpdate);
+
+    // Listen for real-time judge status updates
+    newSocket.on("judge:status-update", (payload: any) => {
+      const key = `${payload.judgeId}:${payload.candidateId}:${payload.categoryId}`;
+      setJudgeStatuses((prev) => ({ ...prev, [key]: payload.status }));
+    });
+
+    // Load initial judge statuses when connecting
+    newSocket.on("admin:initial-judge-statuses", (statuses: any[]) => {
+      const map: Record<string, "unsaved" | "saved" | "pending"> = {};
+      statuses.forEach((s) => {
+        const key = `${s.judgeId}:${s.candidateId}:${s.categoryId}`;
+        map[key] = s.status;
+      });
+      setJudgeStatuses((prev) => ({ ...prev, ...map }));
+    });
+
     return () => {
       newSocket.close();
     };
@@ -559,7 +587,7 @@ export function ResultsPage() {
                             key={j.id}
                             className="py-4 px-6 text-[11px] font-mono font-bold tracking-widest text-muted-foreground uppercase text-center"
                           >
-                            JUDGE {idx + 1}
+                            JUDGE {j.judgeNumber || idx + 1}
                             <span className="block text-[9px] font-normal text-muted-foreground/60 truncate max-w-30 mx-auto mt-0.5">
                               {j.name}
                             </span>
@@ -617,17 +645,30 @@ export function ResultsPage() {
                                 ? judgeCriteriaScores.reduce((sum, val) => sum! + val!, 0)
                                 : 0;
 
+                              // Check real-time judge status from socket
+                              const statusKey = `${j.id}:${c.id}:${selectedCategory.id}`;
+                              const liveStatus = judgeStatuses[statusKey];
+
                               return (
                                 <td key={j.id} className="py-4 px-6 text-center">
-                                  {isComplete ? (
+                                  {isComplete && liveStatus !== "unsaved" ? (
                                     <button
                                       onClick={() => openEditModal(c, j, selectedCategory)}
                                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group"
-                                      title="Click to edit score"
+                                      title="Submitted — Click to edit score"
                                     >
                                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                                       <span>{Math.round(totalValue)}</span>
                                       <Edit3 className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </button>
+                                  ) : liveStatus === "unsaved" ? (
+                                    <button
+                                      onClick={() => openEditModal(c, j, selectedCategory)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm animate-pulse group"
+                                      title="Judge has unsaved edits — not yet submitted"
+                                    >
+                                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                      <span>Unsaved</span>
                                     </button>
                                   ) : (
                                     <button

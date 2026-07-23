@@ -19,7 +19,7 @@ export function CandidatesPage() {
   const [editCandidateData, setEditCandidateData] = useState<Candidate | null>(null);
   const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<Candidate | null>(null);
   const [deletingCand, setDeletingCand] = useState(false);
-  const [form, setForm] = useState({ name: "", candidateNumber: 1 });
+  const [form, setForm] = useState({ name: "", candidateNumber: 1, barangay: "", municipality: "", province: "", region: "", country: "" });
   const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null);
   const [createPhotoPreview, setCreatePhotoPreview] = useState<string | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -90,7 +90,15 @@ export function CandidatesPage() {
         await uploadPhoto(data.data.id, createPhotoFile);
       }
       setShowCreate(false);
-      setForm({ name: "", candidateNumber: candidates.length + 2 });
+      setForm({
+        name: "",
+        candidateNumber: candidates.length + 2,
+        barangay: "",
+        municipality: "",
+        province: "",
+        region: "",
+        country: "",
+      });
       setCreatePhotoFile(null);
       setCreatePhotoPreview(null);
       fetchCandidates();
@@ -102,7 +110,15 @@ export function CandidatesPage() {
     if (!editCandidateData) return;
     await fetch(`${API_BASE}/candidates/${editCandidateData.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify({ name: editCandidateData.name, candidateNumber: editCandidateData.candidateNumber }),
+      body: JSON.stringify({
+        name: editCandidateData.name,
+        candidateNumber: editCandidateData.candidateNumber,
+        barangay: editCandidateData.barangay,
+        municipality: editCandidateData.municipality,
+        province: editCandidateData.province,
+        region: editCandidateData.region,
+        country: editCandidateData.country,
+      }),
     });
     setEditCandidateData(null);
     fetchCandidates();
@@ -149,7 +165,7 @@ export function CandidatesPage() {
             <h1 className="text-lg font-bold text-foreground">Candidates</h1>
             <span className="text-xs text-muted-foreground">{candidates.length} total</span>
           </div>
-          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1 }); setCreatePhotoFile(null); setCreatePhotoPreview(null); setShowCreate(true); }} >
+          <Button onClick={() => { setForm({ name: "", candidateNumber: candidates.length + 1, barangay: "", municipality: "", province: "", region: "", country: "" }); setCreatePhotoFile(null); setCreatePhotoPreview(null); setShowCreate(true); }} >
             <Plus className="w-4 h-4 mr-1.5" /> Add Candidate
           </Button>
         </div>
@@ -254,6 +270,58 @@ export function CandidatesPage() {
                 required
               />
             </div>
+
+            <div className="space-y-1 w-full border-t border-border pt-3">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Location Info (Optional)</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="candidate-barangay">Barangay</Label>
+                <Input
+                  id="candidate-barangay"
+                  placeholder="e.g. Brgy. 1"
+                  value={form.barangay}
+                  onChange={(e) => setForm({ ...form, barangay: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="candidate-municipality">Municipality/City</Label>
+                <Input
+                  id="candidate-municipality"
+                  placeholder="e.g. Naga City"
+                  value={form.municipality}
+                  onChange={(e) => setForm({ ...form, municipality: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="candidate-province">Province</Label>
+                <Input
+                  id="candidate-province"
+                  placeholder="e.g. Camarines Sur"
+                  value={form.province}
+                  onChange={(e) => setForm({ ...form, province: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="candidate-region">Region</Label>
+                <Input
+                  id="candidate-region"
+                  placeholder="e.g. Bicol Region"
+                  value={form.region}
+                  onChange={(e) => setForm({ ...form, region: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="candidate-country">Country</Label>
+              <Input
+                id="candidate-country"
+                placeholder="e.g. Philippines"
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+              />
+            </div>
             <Button type="submit" className="w-full py-3">Add Candidate</Button>
           </form>
         </DialogContent>
@@ -328,6 +396,58 @@ export function CandidatesPage() {
                   value={editCandidateData.candidateNumber}
                   onChange={(e) => setEditCandidateData({ ...editCandidateData, candidateNumber: Number(e.target.value) })}
                   required
+                />
+              </div>
+
+              <div className="space-y-1 w-full border-t border-border pt-3">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Location Info (Optional)</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-candidate-barangay">Barangay</Label>
+                  <Input
+                    id="edit-candidate-barangay"
+                    placeholder="e.g. Brgy. 1"
+                    value={editCandidateData.barangay || ""}
+                    onChange={(e) => setEditCandidateData({ ...editCandidateData, barangay: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-candidate-municipality">Municipality/City</Label>
+                  <Input
+                    id="edit-candidate-municipality"
+                    placeholder="e.g. Naga City"
+                    value={editCandidateData.municipality || ""}
+                    onChange={(e) => setEditCandidateData({ ...editCandidateData, municipality: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-candidate-province">Province</Label>
+                  <Input
+                    id="edit-candidate-province"
+                    placeholder="e.g. Camarines Sur"
+                    value={editCandidateData.province || ""}
+                    onChange={(e) => setEditCandidateData({ ...editCandidateData, province: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 w-full">
+                  <Label htmlFor="edit-candidate-region">Region</Label>
+                  <Input
+                    id="edit-candidate-region"
+                    placeholder="e.g. Bicol Region"
+                    value={editCandidateData.region || ""}
+                    onChange={(e) => setEditCandidateData({ ...editCandidateData, region: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-candidate-country">Country</Label>
+                <Input
+                  id="edit-candidate-country"
+                  placeholder="e.g. Philippines"
+                  value={editCandidateData.country || ""}
+                  onChange={(e) => setEditCandidateData({ ...editCandidateData, country: e.target.value })}
                 />
               </div>
               <div className="flex gap-2 justify-end mt-4">

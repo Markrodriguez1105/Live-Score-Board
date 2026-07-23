@@ -29,6 +29,7 @@ judgeRoutes.post("/judges/auth", async (req, res) => {
       judgeId: judge.id,
       pageantId: judge.pageantId,
       judgeName: judge.name,
+      judgeNumber: judge.judgeNumber,
     });
 
     res.json({
@@ -39,6 +40,7 @@ judgeRoutes.post("/judges/auth", async (req, res) => {
           id: judge.id,
           name: judge.name,
           pageantId: judge.pageantId,
+          judgeNumber: judge.judgeNumber,
         },
       },
     });
@@ -69,7 +71,7 @@ judgeRoutes.post(
   requireAdmin,
   async (req, res) => {
     try {
-      const { name, pin } = req.body;
+      const { name, pin, judgeNumber } = req.body;
       if (!name || !pin) {
         res.status(400).json({
           success: false,
@@ -91,6 +93,7 @@ judgeRoutes.post(
       const judge = await JudgeQueries.create(req.params.pageantId as string, {
         name,
         pin,
+        judgeNumber,
       });
       res.status(201).json({ success: true, data: judge });
     } catch (err) {
@@ -102,7 +105,7 @@ judgeRoutes.post(
 // Update judge
 judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
   try {
-    const { name, pin } = req.body;
+    const { name, pin, judgeNumber } = req.body;
 
     if (pin) {
       const existing = await JudgeQueries.getByPin(pin);
@@ -115,7 +118,7 @@ judgeRoutes.put("/judges/:id", requireAdmin, async (req, res) => {
       }
     }
 
-    const judge = await JudgeQueries.update(req.params.id as string, { name, pin });
+    const judge = await JudgeQueries.update(req.params.id as string, { name, pin, judgeNumber });
     if (!judge) {
       res.status(404).json({ success: false, error: "Judge not found" });
       return;

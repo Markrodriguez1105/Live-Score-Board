@@ -18,7 +18,7 @@ export function JudgesPage() {
   const [editJudgeData, setEditJudgeData] = useState<Judge | null>(null);
   const [deleteJudgeTarget, setDeleteJudgeTarget] = useState<Judge | null>(null);
   const [deletingJudge, setDeletingJudge] = useState(false);
-  const [form, setForm] = useState({ name: "", pin: "" });
+  const [form, setForm] = useState({ name: "", pin: "", judgeNumber: "" });
   const [showPins, setShowPins] = useState(false);
 
   const fetchJudges = async () => {
@@ -31,14 +31,19 @@ export function JudgesPage() {
 
   const createJudge = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      name: form.name,
+      pin: form.pin,
+      judgeNumber: form.judgeNumber ? parseInt(form.judgeNumber) : undefined,
+    };
     const res = await fetch(`${API_BASE}/pageants/${id}/judges`, {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (data.success) {
       setShowCreate(false);
-      setForm({ name: "", pin: "" });
+      setForm({ name: "", pin: "", judgeNumber: "" });
       fetchJudges();
     } else {
       alert(data.error || "Failed to create judge");
@@ -48,9 +53,14 @@ export function JudgesPage() {
   const updateJudge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editJudgeData) return;
+    const payload = {
+      name: editJudgeData.name,
+      pin: editJudgeData.pin,
+      judgeNumber: editJudgeData.judgeNumber ? Number(editJudgeData.judgeNumber) : undefined,
+    };
     const res = await fetch(`${API_BASE}/judges/${editJudgeData.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
-      body: JSON.stringify({ name: editJudgeData.name, pin: editJudgeData.pin }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (data.success) {
@@ -128,7 +138,7 @@ export function JudgesPage() {
               <Card key={j.id} className="p-4 flex flex-col justify-between hover:border-primary/30 transition-all rounded-xl">
                 <div className="flex items-center gap-3.5 mb-3">
                   <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
-                    {i + 1}
+                    {j.judgeNumber}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-foreground text-sm truncate">{j.name}</h3>
@@ -190,6 +200,16 @@ export function JudgesPage() {
                 required
               />
             </div>
+            <div className="space-y-1.5 w-full">
+              <Label htmlFor="judge-number">Judge Number (optional)</Label>
+              <Input
+                id="judge-number"
+                type="number"
+                placeholder="e.g. 1"
+                value={form.judgeNumber}
+                onChange={(e) => setForm({ ...form, judgeNumber: e.target.value })}
+              />
+            </div>
             <div>
               <Label htmlFor="judge-pin">PIN *</Label>
               <div className="flex gap-2">
@@ -225,6 +245,17 @@ export function JudgesPage() {
                   id="edit-judge-name"
                   value={editJudgeData.name}
                   onChange={(e) => setEditJudgeData({ ...editJudgeData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 w-full">
+                <Label htmlFor="edit-judge-number">Judge Number *</Label>
+                <Input
+                  id="edit-judge-number"
+                  type="number"
+                  placeholder="e.g. 1"
+                  value={editJudgeData.judgeNumber || ""}
+                  onChange={(e) => setEditJudgeData({ ...editJudgeData, judgeNumber: parseInt(e.target.value) || 0 })}
                   required
                 />
               </div>

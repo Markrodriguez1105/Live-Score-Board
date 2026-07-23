@@ -23,6 +23,7 @@ export interface Segment {
   order: number;
   isLocked: boolean;
   isHidden: boolean;
+  isSimultaneous?: boolean;
   createdAt: string;
 }
 
@@ -32,6 +33,7 @@ export interface Category {
   name: string;
   order: number;
   weight: number; // percentage of total (e.g. 30 = 30%)
+  isSimultaneous?: boolean;
 }
 
 export interface Criteria {
@@ -50,6 +52,11 @@ export interface Candidate {
   name: string;
   candidateNumber: number;
   photoUrl?: string;
+  barangay?: string;
+  municipality?: string;
+  province?: string;
+  region?: string;
+  country?: string;
 }
 
 export interface Judge {
@@ -57,6 +64,7 @@ export interface Judge {
   pageantId: string;
   name: string;
   pin: string;
+  judgeNumber: number;
 }
 
 export interface Score {
@@ -78,6 +86,10 @@ export interface PresentationState {
   isIdle: boolean;
   showScores: boolean;
   showJudgeBreakdown: boolean;
+  displayMode?: "default" | "chroma";
+  scorePosition?: "bottom" | "left" | "right";
+  showElements?: "all" | "score" | "candidate";
+  scoreLayout?: "row" | "column" | "grid";
 }
 
 // === Auth ===
@@ -97,6 +109,7 @@ export interface JudgeAuthResponse {
     id: string;
     name: string;
     pageantId: string;
+    judgeNumber: number;
   };
 }
 
@@ -104,6 +117,7 @@ export interface JudgeJwtPayload {
   judgeId: string;
   pageantId: string;
   judgeName: string;
+  judgeNumber: number;
 }
 
 // === Score Submission ===
@@ -182,10 +196,31 @@ export interface ServerToClientEvents {
     pageantId?: string;
     timestamp?: string;
   }) => void;
+  "judge:status-update": (payload: {
+    judgeId: string;
+    judgeName: string;
+    judgeNumber: number;
+    candidateId: string;
+    categoryId: string;
+    status: "unsaved" | "saved" | "pending";
+  }) => void;
+  "admin:initial-judge-statuses": (payload: {
+    judgeId: string;
+    judgeName: string;
+    judgeNumber: number;
+    candidateId: string;
+    categoryId: string;
+    status: "unsaved" | "saved" | "pending";
+  }[]) => void;
 }
 
 export interface ClientToServerEvents {
   "judge:submit-score": (payload: ScoreSubmission) => void;
+  "judge:status-update": (payload: {
+    candidateId: string;
+    categoryId: string;
+    status: "unsaved" | "saved" | "pending";
+  }) => void;
   "admin:set-presentation": (state: Partial<PresentationState>) => void;
   "admin:toggle-segment-lock": (payload: { segmentId: string; isLocked: boolean }) => void;
   "admin:toggle-segment-hide": (payload: { segmentId: string; isHidden: boolean }) => void;
@@ -250,12 +285,14 @@ export interface CreateSegment {
   order: number;
   isLocked?: boolean;
   isHidden?: boolean;
+  isSimultaneous?: boolean;
 }
 
 export interface CreateCategory {
   name: string;
   order: number;
   weight: number;
+  isSimultaneous?: boolean;
   candidateIds?: string[];
 }
 
@@ -270,9 +307,15 @@ export interface CreateCriteria {
 export interface CreateCandidate {
   name: string;
   candidateNumber: number;
+  barangay?: string;
+  municipality?: string;
+  province?: string;
+  region?: string;
+  country?: string;
 }
 
 export interface CreateJudge {
   name: string;
   pin: string;
+  judgeNumber?: number;
 }

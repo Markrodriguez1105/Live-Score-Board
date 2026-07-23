@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Plus, X, AlertTriangle, Trash2, Users, Check } from "lucide-react";
+import { ArrowLeft, ClipboardList, Plus, X, AlertTriangle, Trash2, Users, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { toast } from "sonner";
 import type { CategoryWithCandidates, CreateCriteria, Category, Criteria, Candidate } from "@pageant/types";
 import { Button } from "@pageant/ui/components/button";
 import { Card } from "@pageant/ui/components/card";
@@ -45,9 +46,55 @@ export function CategoriesPage() {
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchCandidates();
-  }, [id, segmentId]);
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/pageants/admin/session`, { credentials: "include" });
+        const d = await res.json();
+        if (!d.success || !d.data?.isAdmin) {
+          navigate("/");
+          return;
+        }
+        fetchCategories();
+        fetchCandidates();
+      } catch {
+        navigate("/");
+      }
+    };
+    checkSession();
+  }, [id, segmentId, navigate]);
+
+  const moveCategory = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+
+    const newCategories = [...categories];
+    const temp = newCategories[index];
+    newCategories[index] = newCategories[targetIndex];
+    newCategories[targetIndex] = temp;
+
+    setCategories(newCategories);
+
+    const categoryIds = newCategories.map((c) => c.id);
+    try {
+      const res = await fetch(`${API_BASE}/segments/${segmentId}/categories/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ categoryIds }),
+      });
+      if (res.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        navigate("/");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Failed to reorder categories");
+      }
+    } catch (err) {
+      console.error("[ERROR] Failed to save categories reorder:", err);
+      fetchCategories();
+    }
+  };
 
   const createCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,24 +248,88 @@ export function CategoriesPage() {
             <p>No categories yet. Add your first scoring category.</p>
           </div>
         ) : (
-          categories.map((cat) => {
+          categories.map((cat, index) => {
             const critWeight = cat.criteria.reduce((sum, c) => sum + c.weight, 0);
             return (
               <Card key={cat.id}>
                 {/* Category Header */}
-                <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-card/50">
-                  <div>
-                    <h3 className="font-bold text-foreground text-base">{cat.name}</h3>
-                    <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
-                      <span>Weight: {cat.weight}% of total</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        {cat.candidates.length} {cat.candidates.length === 1 ? "candidate" : "candidates"}
-                      </span>
+                <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-card/50 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-primary/15 text-primary border border-primary/20 shrink-0">
+                      #{index + 1}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-foreground text-base">{cat.name}</h3>
+                      <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
+                        <span>Weight: {cat.weight}% of total</span>
+                        <span>·</span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {cat.candidates.length} {cat.candidates.length === 1 ? "candidate" : "candidates"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Simultaneous Scoring Toggle */}
+                    <div className="flex items-center gap-2 bg-muted/40 px-3 py-1.5 rounded-lg border border-border">
+                      <input
+                        type="checkbox"
+                        id={`simultaneous-${cat.id}`}
+                        checked={!!cat.isSimultaneous}
+                        onChange={async (e) => {
+                          const val = e.target.checked;
+                          try {
+                            const res = await fetch(`${API_BASE}/categories/${cat.id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify({ isSimultaneous: val }),
+                            });
+                            if (res.ok) {
+                              toast.success(val ? `Enabled simultaneous scoring for ${cat.name}` : `Disabled simultaneous scoring for ${cat.name}`);
+                              fetchCategories();
+                            } else if (res.status === 401) {
+                              toast.error("Session expired. Please log in again.");
+                              navigate("/");
+                            } else {
+                              toast.error("Failed to update scoring mode");
+                            }
+                          } catch {
+                            toast.error("Failed to update scoring mode");
+                          }
+                        }}
+                        className="w-3.5 h-3.5 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
+                      />
+                      <label htmlFor={`simultaneous-${cat.id}`} className="text-[10px] font-bold text-muted-foreground uppercase cursor-pointer select-none">
+                        ⚡ Simultaneous
+                      </label>
+                    </div>
+
+                    {/* Rearrange Up / Down Buttons */}
+                    <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={index === 0}
+                        onClick={() => moveCategory(index, "up")}
+                        title="Move Category Up"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={index === categories.length - 1}
+                        onClick={() => moveCategory(index, "down")}
+                        title="Move Category Down"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+
                     <Button variant="outline" size="sm" onClick={() => openAssignCandidates(cat.id)}>
                       <Users className="w-3.5 h-3.5 mr-1" /> Candidates
                     </Button>
@@ -565,15 +676,13 @@ export function CategoriesPage() {
                     key={c.id}
                     type="button"
                     onClick={() => toggleCandidate(c.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3 cursor-pointer ${
-                      isSelected
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3 cursor-pointer ${isSelected
                         ? "bg-primary/10 border-primary/40 text-foreground"
                         : "bg-card border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                    }`}
+                      }`}
                   >
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                      isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
-                    }`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                      }`}>
                       {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                     </div>
                     <img

@@ -15,7 +15,7 @@ export function ViewerPage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [pageant, setPageant] = useState<Pageant | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
-  const [scores, setScores] = useState<{ judgeId?: string; judgeName: string; value: number }[]>([]);
+  const [scores, setScores] = useState<{ judgeId?: string; judgeName: string; judgeNumber?: number; value: number }[]>([]);
   const [imageUrl, setImageUrl] = useState("");
 
   const [categories, setCategories] = useState<CategoryWithCriteria[]>([]);
@@ -142,11 +142,11 @@ export function ViewerPage() {
         const uniqueJudgeIds = Array.from(new Set(rawScores.map((s) => s.judgeId)));
         judgeListToUse = uniqueJudgeIds.map((jId) => {
           const sample = rawScores.find((s) => s.judgeId === jId);
-          return { id: jId, name: sample?.judgeName || "Judge" };
+          return { id: jId, name: sample?.judgeName || "Judge", judgeNumber: sample?.judgeNumber };
         });
       }
 
-      const sortedJudges = judgeListToUse.sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+      const sortedJudges = judgeListToUse.sort((a, b) => (a.judgeNumber || 0) - (b.judgeNumber || 0));
 
       const judgeResults = sortedJudges.map((j, idx) => {
         const scoreObj = scoresByJudge[j.id];
@@ -158,7 +158,8 @@ export function ViewerPage() {
 
         return {
           judgeId: j.id,
-          judgeName: j.name || `Judge ${idx + 1}`,
+          judgeName: j.name || `Judge ${j.judgeNumber || idx + 1}`,
+          judgeNumber: j.judgeNumber,
           value,
         };
       });
@@ -270,75 +271,223 @@ export function ViewerPage() {
   }
 
   // Candidate Spotlight
+  const isChroma = presentation.displayMode === "chroma";
+  const pos = presentation.scorePosition || "bottom";
+
+  // Define mask gradients depending on position
+  let maskStyle = {};
+  let gradientOverlayClass = "";
+  const bgPositionClass = pos === "left" ? "bg-right" : pos === "right" ? "bg-left" : "bg-center";
+
+  if (!isChroma) {
+    if (pos === "left") {
+      maskStyle = {
+        backgroundImage: `url("${imageUrl}")`,
+        maskImage: "linear-gradient(to right, rgba(0,0,0,0) 10%, rgba(0,0,0,1) 70%)",
+        WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0) 10%, rgba(0,0,0,1) 70%)",
+      };
+      gradientOverlayClass = "bg-linear-to-r from-black via-black/40 to-transparent";
+    } else if (pos === "right") {
+      maskStyle = {
+        backgroundImage: `url("${imageUrl}")`,
+        maskImage: "linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%)",
+        WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%)",
+      };
+      gradientOverlayClass = "bg-linear-to-r from-transparent via-black/40 to-black";
+    } else {
+      // bottom
+      maskStyle = {
+        backgroundImage: `url("${imageUrl}")`,
+        maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%)",
+      };
+      gradientOverlayClass = "bg-linear-to-b from-transparent via-black/40 to-black";
+    }
+  }
+
+  const shouldShowScores = (presentation.showScores ?? true) && (presentation.showElements !== "candidate") && scores.length > 0;
+  const shouldShowCandidateInfo = (presentation.showElements !== "score");
+
   return (
-    <div className="h-screen w-screen overflow-hidden bg-black text-white relative">
-      {/* Background image with gradient mask */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
-        style={{
-          backgroundImage: `url("${imageUrl}")`,
-          maskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%)",
-          WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%)",
-        }}
-      />
+    <div className={`h-screen w-screen overflow-hidden relative transition-colors duration-500 ${isChroma ? "bg-[#00ff00]" : "bg-black text-white"}`}>
+      {/* Background image with gradient mask (only if not chroma) */}
+      {!isChroma && (
+        <>
+          <div
+            className={`absolute inset-0 bg-cover ${bgPositionClass} transition-all duration-700`}
+            style={maskStyle}
+          />
+          {/* Gradient overlay */}
+          <div className={`absolute inset-0 ${gradientOverlayClass}`} />
+        </>
+      )}
 
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/40 to-black/90" />
-
-      {/* Content */}
-      <div className="absolute inset-y-0 right-0 w-1/2 flex flex-col justify-center items-center px-12 z-10 space-y-6">
-        {/* Category Badge */}
-        {category && (
-          <div className="px-8 py-3 bg-black/60 backdrop-blur-md rounded-full border border-primary/30">
-            <span className="text-primary text-xl font-bold uppercase tracking-[0.3em]">
-              {category.name}
-            </span>
-          </div>
-        )}
-
-        {/* Candidate Name */}
-        <div className="text-center">
-          <h2 className="text-7xl font-bold tracking-tight drop-shadow-2xl">
-            {candidate.name}
-          </h2>
-          <p className="text-lg text-white/40 mt-2 uppercase tracking-widest">
-            Candidate #{candidate.candidateNumber}
-          </p>
-        </div>
-
-        {/* Scores Display Section */}
-        {(presentation?.showScores ?? true) && scores.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mt-4">
-            {scores.map((s, i) => (
-              <div
-                key={s.judgeId || i}
-                className="flex flex-col items-center p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md shadow-lg"
-                style={{
-                  animation: `fadeInFromTop 500ms cubic-bezier(.2,.8,.2,1) ${i * 120}ms forwards`,
-                  opacity: 0,
-                }}
-              >
-                <span className="text-[10px] text-white/60 uppercase tracking-wider mb-1 font-semibold truncate max-w-full">
-                  Judge {i + 1}
-                </span>
-                <span className="text-3xl font-bold font-mono text-amber-400">
-                  <ScoreDisplay
-                    target={s.value}
-                    duration={1500}
-                    suffix="%"
-                    showRandomPhase={false}
-                  />
-                </span>
+      {/* Layout position rendering */}
+      {pos === "bottom" ? (
+        /* Lower Third (Bottom) Layout */
+        <div className={`absolute bottom-0 inset-x-0 ${isChroma ? "bg-black/95 border-t border-white/15" : "bg-black/80 border-t border-white/10 backdrop-blur-md"} px-8 py-5 flex items-center ${shouldShowCandidateInfo ? "justify-between" : "justify-center"} z-10 transition-all duration-300`}>
+          {/* Left Side: Candidate Photo + Info */}
+          {shouldShowCandidateInfo && (
+            <div className="flex items-center gap-4 text-white">
+              {!isChroma && (
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="w-16 h-16 rounded-xl object-cover border border-white/10 shadow-lg"
+                />
+              )}
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl font-black tracking-tight drop-shadow-md">
+                    {candidate.name}
+                  </h2>
+                  {category && (
+                    <span className="px-3 py-1 bg-primary/25 border border-primary/45 text-primary text-[10px] font-black uppercase tracking-wider rounded-md">
+                      {category.name}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-white/60 font-bold uppercase tracking-widest mt-1">
+                  Candidate #{candidate.candidateNumber}
+                </p>
+                {([
+                  candidate.barangay,
+                  candidate.municipality,
+                  candidate.province,
+                  candidate.region,
+                  candidate.country
+                ].some(Boolean)) && (
+                  <p className="text-[10px] text-white/40 font-semibold mt-1">
+                    {[
+                      candidate.barangay,
+                      candidate.municipality,
+                      candidate.province,
+                      candidate.region,
+                      candidate.country
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
 
-      {/* Bottom branding */}
-      <div className="absolute bottom-8 left-8 text-white/20 text-xs font-mono">
-        LIVE SCOREBOARD
-      </div>
+          {/* Right Side: Scores (Horizontal flex / vertical column) */}
+          {shouldShowScores && (
+            <div className={
+              presentation.scoreLayout === "column"
+                ? "flex flex-col gap-2 text-white"
+                : "flex flex-row items-center gap-4 text-white"
+            }>
+              {scores.map((s, i) => (
+                <div
+                  key={s.judgeId || i}
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl border border-white/10 bg-black/50 backdrop-blur-md shadow-md min-w-[115px]"
+                  style={{
+                    animation: `fadeInFromTop 500ms cubic-bezier(.2,.8,.2,1) ${i * 100}ms forwards`,
+                    opacity: 0,
+                  }}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-white/50 uppercase tracking-wider font-bold">
+                      Judge {s.judgeNumber ?? i + 1}
+                    </span>
+                    <span className="text-lg font-bold font-mono text-amber-400">
+                      <ScoreDisplay
+                        target={s.value}
+                        duration={1500}
+                        suffix="%"
+                        showRandomPhase={false}
+                      />
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Side Column (Left or Right) Layout */
+        <div className={`absolute inset-y-0 ${pos === "left" ? "left-0" : "right-0"} w-[38%] flex flex-col justify-center px-10 z-10 space-y-4 ${shouldShowCandidateInfo ? (isChroma ? "bg-black/95 border-x border-white/15 text-white" : "bg-black/20 text-white") : "bg-transparent text-white"}`}>
+          {/* Category Badge */}
+          {shouldShowCandidateInfo && category && (
+            <div className="self-center px-6 py-2.5 bg-black/60 backdrop-blur-md rounded-full border border-primary/30">
+              <span className="text-primary text-xs font-black uppercase tracking-[0.2em]">
+                {category.name}
+              </span>
+            </div>
+          )}
+
+          {/* Candidate Info Card */}
+          {shouldShowCandidateInfo && (
+            <div className="bg-black/40 border border-white/10 rounded-2xl p-6 text-center space-y-3">
+              <h2 className="text-4xl font-black tracking-tight leading-tight">
+                {candidate.name}
+              </h2>
+              <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
+                Candidate #{candidate.candidateNumber}
+              </p>
+              {([
+                candidate.barangay,
+                candidate.municipality,
+                candidate.province,
+                candidate.region,
+                candidate.country
+              ].some(Boolean)) && (
+                <p className="text-xs text-white/40 font-semibold mt-1">
+                  {[
+                    candidate.barangay,
+                    candidate.municipality,
+                    candidate.province,
+                    candidate.region,
+                    candidate.country
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Scores List */}
+          {shouldShowScores && (
+            <div className={
+              presentation.scoreLayout === "column"
+                ? "flex flex-col gap-3 w-full"
+                : presentation.scoreLayout === "row"
+                  ? "flex flex-row flex-wrap justify-center gap-3 w-full"
+                  : "grid grid-cols-2 gap-3 w-full"
+            }>
+              {scores.map((s, i) => (
+                <div
+                  key={s.judgeId || i}
+                  className="flex flex-col items-center p-3 rounded-xl border border-white/10 bg-black/50 backdrop-blur-md shadow-md min-w-[110px] flex-1 text-center"
+                  style={{
+                    animation: `fadeInFromTop 500ms cubic-bezier(.2,.8,.2,1) ${i * 120}ms forwards`,
+                    opacity: 0,
+                  }}
+                >
+                  <span className="text-[10px] text-white/60 uppercase tracking-wider mb-1 font-bold truncate max-w-full">
+                    Judge {s.judgeNumber ?? i + 1}
+                  </span>
+                  <span className="text-xl font-bold font-mono text-amber-400">
+                    <ScoreDisplay
+                      target={s.value}
+                      duration={1500}
+                      suffix="%"
+                      showRandomPhase={false}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bottom branding (only if not chroma) */}
+      {!isChroma && (
+        <div className="absolute bottom-8 left-8 text-white/20 text-xs font-mono">
+          LIVE SCOREBOARD
+        </div>
+      )}
     </div>
   );
 }

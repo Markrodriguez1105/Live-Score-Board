@@ -16,7 +16,9 @@ import type {
   JudgeJwtPayload,
   PresentationState,
 } from "@pageant/types";
+import { createChildLogger } from "./logger.js";
 
+const socketLogger = createChildLogger("Socket");
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -38,7 +40,7 @@ const judgeStatusMap = new Map<string, {
 
 export function setupSocketHandlers(io: PageantIO) {
   io.on("connection", (socket: PageantSocket) => {
-    console.log(`[Socket] Connected: ${socket.id}`);
+    socketLogger.info(`Connected: ${socket.id}`);
 
     // Send current judge statuses to newly connected admin clients
     if (judgeStatusMap.size > 0) {
@@ -54,7 +56,7 @@ export function setupSocketHandlers(io: PageantIO) {
           (socket.handshake.query?.token as string);
 
         if (!token) {
-          console.warn("[Socket] Judge submit without token");
+          socketLogger.warn({ socketId: socket.id }, "Judge submit without token");
           return;
         }
 
@@ -65,14 +67,14 @@ export function setupSocketHandlers(io: PageantIO) {
         const allCriteria = await CriteriaQueries.getByIds(criteriaIds);
 
         if (allCriteria.length !== criteriaIds.length) {
-          console.warn("[Socket] One or more criteria IDs are invalid");
+          socketLogger.warn({ socketId: socket.id, criteriaIds }, "One or more criteria IDs are invalid");
           return;
         }
 
         // Batch lock check: single query for all criteria
         const isLocked = await SegmentQueries.areCriteriaLocked(criteriaIds);
         if (isLocked) {
-          console.warn("[Socket] Segment locked for criteria");
+          socketLogger.warn({ socketId: socket.id, criteriaIds }, "Segment locked for criteria");
           return;
         }
 
@@ -82,8 +84,9 @@ export function setupSocketHandlers(io: PageantIO) {
           const criteria = criteriaMap.get(s.criteriaId);
           if (!criteria) return;
           if (s.value < criteria.minScore || s.value > criteria.maxScore) {
-            console.warn(
-              `[Socket] Score ${s.value} out of range [${criteria.minScore}, ${criteria.maxScore}]`
+            socketLogger.warn(
+              { value: s.value, minScore: criteria.minScore, maxScore: criteria.maxScore },
+              `Score ${s.value} out of range [${criteria.minScore}, ${criteria.maxScore}]`
             );
             return;
           }
@@ -106,11 +109,12 @@ export function setupSocketHandlers(io: PageantIO) {
           judgeScores: [],
         });
 
-        console.log(
-          `[Socket] Score submitted by judge ${decoded.judgeId} for candidate ${payload.candidateId}`
+        socketLogger.info(
+          { judgeId: decoded.judgeId, candidateId: payload.candidateId },
+          `Score submitted by judge ${decoded.judgeId} for candidate ${payload.candidateId}`
         );
       } catch (err) {
-        console.error("[Socket] Error submitting score:", err);
+        socketLogger.error(err as Error, "Error submitting score");
       }
     });
 
@@ -124,13 +128,14 @@ export function setupSocketHandlers(io: PageantIO) {
           );
           if (updated) {
             io.emit("presentation:update", updated);
-            console.log(`[Socket] Presentation updated for pageant ${state.pageantId}`);
+            socketLogger.info({ pageantId: state.pageantId }, `Presentation updated for pageant ${state.pageantId}`);
           }
         }
       } catch (err) {
-        console.error("[Socket] Error updating presentation:", err);
+        socketLogger.error(err as Error, "Error updating presentation");
       }
     });
+
     // ── Admin: Toggle Segment Lock / Hide ─────────────────────
     socket.on("admin:toggle-segment-lock", async (payload) => {
       try {
@@ -148,11 +153,11 @@ export function setupSocketHandlers(io: PageantIO) {
               segmentId: updated.id,
               isHidden: updated.isHidden,
             });
-            console.log(`[Socket] Segment ${updated.id} visibility state: ${updated.isHidden}`);
+            socketLogger.info({ segmentId: updated.id, isHidden: updated.isHidden }, `Segment ${updated.id} visibility state: ${updated.isHidden}`);
           }
         }
       } catch (err) {
-        console.error("[Socket] Error toggling segment lock:", err);
+        socketLogger.error(err as Error, "Error toggling segment lock");
       }
     });
 
@@ -172,11 +177,11 @@ export function setupSocketHandlers(io: PageantIO) {
               segmentId: updated.id,
               isLocked: updated.isHidden,
             });
-            console.log(`[Socket] Segment ${updated.id} hide state: ${updated.isHidden}`);
+            socketLogger.info({ segmentId: updated.id, isHidden: updated.isHidden }, `Segment ${updated.id} hide state: ${updated.isHidden}`);
           }
         }
       } catch (err) {
-        console.error("[Socket] Error toggling segment hide:", err);
+        socketLogger.error(err as Error, "Error toggling segment hide");
       }
     });
 
@@ -201,11 +206,12 @@ export function setupSocketHandlers(io: PageantIO) {
           judgeScores: [],
         });
 
-        console.log(
-          `[Socket] Score overridden: judge=${payload.judgeId} candidate=${payload.candidateId} criteria=${payload.criteriaId} value=${payload.value}`
+        socketLogger.info(
+          { judgeId: payload.judgeId, candidateId: payload.candidateId, criteriaId: payload.criteriaId, value: payload.value },
+          `Score overridden: judge=${payload.judgeId} candidate=${payload.candidateId} criteria=${payload.criteriaId} value=${payload.value}`
         );
       } catch (err) {
-        console.error("[Socket] Error overriding score:", err);
+        socketLogger.error(err as Error, "Error overriding score");
       }
     });
 
@@ -217,11 +223,12 @@ export function setupSocketHandlers(io: PageantIO) {
           timestamp: new Date().toISOString(),
         };
         io.emit("judge:assistance-alert", alertData);
-        console.log(
-          `[Socket] Assistance requested by Judge ${payload.judgeName} (${payload.judgeId})`
+        socketLogger.info(
+          { judgeId: payload.judgeId, judgeName: payload.judgeName },
+          `Assistance requested by Judge ${payload.judgeName} (${payload.judgeId})`
         );
       } catch (err) {
-        console.error("[Socket] Error processing assistance request:", err);
+        socketLogger.error(err as Error, "Error processing assistance request");
       }
     });
 
@@ -251,16 +258,17 @@ export function setupSocketHandlers(io: PageantIO) {
         // Broadcast to all clients (admin will listen)
         io.emit("judge:status-update", statusEntry);
 
-        console.log(
-          `[Socket] Judge ${decoded.judgeId} status → ${payload.status} for candidate ${payload.candidateId}`
+        socketLogger.info(
+          { judgeId: decoded.judgeId, candidateId: payload.candidateId, status: payload.status },
+          `Judge ${decoded.judgeId} status → ${payload.status} for candidate ${payload.candidateId}`
         );
       } catch (err) {
-        console.error("[Socket] Error processing judge status:", err);
+        socketLogger.error(err as Error, "Error processing judge status");
       }
     });
 
     socket.on("disconnect", () => {
-      console.log(`[Socket] Disconnected: ${socket.id}`);
+      socketLogger.info(`Disconnected: ${socket.id}`);
     });
   });
 }

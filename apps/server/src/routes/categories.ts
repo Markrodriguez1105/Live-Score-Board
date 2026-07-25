@@ -5,6 +5,9 @@
 import { Router } from "express";
 import { CategoryQueries, CriteriaQueries, CategoryCandidateQueries } from "@pageant/database";
 import { requireAdmin } from "../middleware/auth.js";
+import { createChildLogger } from "../logger.js";
+
+const categoryLogger = createChildLogger("Categories");
 
 export const categoryRoutes = Router();
 
@@ -32,14 +35,14 @@ categoryRoutes.put(
   async (req, res) => {
     try {
       const { categoryIds } = req.body;
-      console.log("[DEBUG] Categories reorder request received:", { segmentId: req.params.segmentId, categoryIds });
+      categoryLogger.debug({ segmentId: req.params.segmentId, categoryIds }, "Categories reorder request received");
       if (!Array.isArray(categoryIds)) {
         res.status(400).json({ success: false, error: "categoryIds array is required" });
         return;
       }
       await CategoryQueries.reorder(req.params.segmentId as string, categoryIds);
       const categories = await CategoryQueries.getWithCandidates(req.params.segmentId as string);
-      console.log("[DEBUG] Reordered categories in DB. New order:", categories.map(c => ({ id: c.id, name: c.name, order: c.order })));
+      categoryLogger.debug({ newOrder: categories.map(c => ({ id: c.id, name: c.name, order: c.order })) }, "Reordered categories in DB");
 
       const io = req.app.get("io");
       if (io) {
@@ -49,7 +52,7 @@ categoryRoutes.put(
 
       res.json({ success: true, data: categories });
     } catch (err) {
-      console.error("[DEBUG] Error in categories reorder route:", err);
+      categoryLogger.error(err as Error, "Error in categories reorder route");
       res.status(500).json({ success: false, error: String(err) });
     }
   }

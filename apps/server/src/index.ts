@@ -12,7 +12,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { initDatabase, initSchema } from "@pageant/database";
+import { initRedis } from "./redis.js";
 import type { ServerToClientEvents, ClientToServerEvents } from "@pageant/types";
+import { logger } from "./logger.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 
 import { pageantRoutes } from "./routes/pageants.js";
 import { segmentRoutes } from "./routes/segments.js";
@@ -32,6 +35,9 @@ const PORT = parseInt(process.env.PORT || "3001");
 
 const app = express();
 const httpServer = createServer(app);
+
+// HTTP Request Logger Middleware
+app.use(requestLogger);
 
 // CORS — allow all origins for local network
 app.use(
@@ -101,19 +107,23 @@ async function start() {
     database: process.env.DB_NAME || "pageant_db",
   });
 
+  // Initialize Redis connection
+  initRedis();
+
   // Create tables if they don't exist
   await initSchema();
 
   // Start server
   httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n🚀 Pageant Server running on port ${PORT}`);
-    console.log(`   API:       http://0.0.0.0:${PORT}/api`);
-    console.log(`   Socket.IO: http://0.0.0.0:${PORT}`);
-    console.log(`   Uploads:   http://0.0.0.0:${PORT}/uploads\n`);
+    logger.info(`🚀 Pageant Server running on port ${PORT}`, {
+      api: `http://0.0.0.0:${PORT}/api`,
+      socketIo: `http://0.0.0.0:${PORT}`,
+      uploads: `http://0.0.0.0:${PORT}/uploads`,
+    });
   });
 }
 
 start().catch((err) => {
-  console.error("❌ Failed to start server:", err);
+  logger.error(err, "❌ Failed to start server");
   process.exit(1);
 });

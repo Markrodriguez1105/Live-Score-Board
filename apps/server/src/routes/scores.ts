@@ -12,6 +12,7 @@ import {
   SegmentQueries,
 } from "@pageant/database";
 import { requireJudge, requireAdmin } from "../middleware/auth.js";
+import { getCache, setCache, delCache } from "../redis.js";
 
 export const scoreRoutes = Router();
 
@@ -77,6 +78,9 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
       scores
     );
 
+    // Invalidate pageant results cache on new score submit
+    await delCache("pageant:results:*");
+
     // Single consolidated broadcast (removed duplicate score:update event)
     const io = req.app.get("io");
     if (io) {
@@ -124,6 +128,9 @@ scoreRoutes.put("/scores/override", requireAdmin, async (req, res) => {
       value
     );
 
+    // Invalidate cache on override
+    await delCache("pageant:results:*");
+
     const io = req.app.get("io");
     if (io) {
       io.emit("scores:update", { candidateId, judgeId, criteriaId });
@@ -156,6 +163,9 @@ const clearScoreHandler = async (req: Request, res: Response) => {
       candidateId,
       categoryId
     );
+
+    // Invalidate cache on score clear
+    await delCache("pageant:results:*");
 
     const io = req.app.get("io");
     if (io) {
@@ -228,23 +238,41 @@ scoreRoutes.get(
 scoreRoutes.get("/pageants/:pageantId/results", async (req, res) => {
   try {
     const pageantId = req.params.pageantId as string;
+    const cacheKey = `pageant:results:${pageantId}`;
+
+    // 1. Try Redis cache first
+    const cachedData = await getCache<any>(cacheKey);
+    if (cachedData) {
+      res.json({
+        success: true,
+        cached: true,
+        data: cachedData,
+      });
+      return;
+    }
+
+    // 2. Cache miss — query MySQL database
     const rawScores = await ScoreQueries.getResultsByPageant(pageantId);
     const candidates = await CandidateQueries.getByPageantId(pageantId);
     const segments = await SegmentQueries.getWithCategories(pageantId);
     const judges = await JudgeQueries.getByPageantId(pageantId);
-
-    // Also provide a flat categories list for backward compatibility
     const categories = await CategoryQueries.getAllWithCriteria(pageantId);
+
+    const resultData = {
+      scores: rawScores,
+      candidates,
+      segments,
+      categories,
+      judges,
+    };
+
+    // 3. Save to Redis cache (TTL: 60 seconds)
+    await setCache(cacheKey, resultData, 60);
 
     res.json({
       success: true,
-      data: {
-        scores: rawScores,
-        candidates,
-        segments,
-        categories,
-        judges,
-      },
+      cached: false,
+      data: resultData,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });

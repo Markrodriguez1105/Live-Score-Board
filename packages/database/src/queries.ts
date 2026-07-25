@@ -289,6 +289,23 @@ export const SegmentQueries = {
     return rows.length > 0 ? (!!rows[0].is_locked || !!rows[0].is_hidden) : false;
   },
 
+  /**
+   * Batch check: are ANY of the given criteria in a locked/hidden segment?
+   */
+  async areCriteriaLocked(criteriaIds: string[]): Promise<boolean> {
+    if (criteriaIds.length === 0) return false;
+    const placeholders = criteriaIds.map(() => "?").join(",");
+    const rows = await query(
+      `SELECT 1 FROM segments s
+       JOIN categories c ON c.segment_id = s.id
+       JOIN criteria cr ON cr.category_id = c.id
+       WHERE cr.id IN (${placeholders}) AND (s.is_locked = 1 OR s.is_hidden = 1)
+       LIMIT 1`,
+      criteriaIds
+    );
+    return rows.length > 0;
+  },
+
   async delete(id: string): Promise<boolean> {
     const result = await execute("DELETE FROM segments WHERE id = ?", [id]);
     return result.affectedRows > 0;
@@ -478,6 +495,19 @@ export const CriteriaQueries = {
   async getById(id: string): Promise<Criteria | null> {
     const rows = await query("SELECT * FROM criteria WHERE id = ?", [id]);
     return rows.length > 0 ? toCriteria(rows[0]) : null;
+  },
+
+  /**
+   * Batch fetch multiple criteria by IDs in a single query.
+   */
+  async getByIds(ids: string[]): Promise<Criteria[]> {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = await query(
+      `SELECT * FROM criteria WHERE id IN (${placeholders})`,
+      ids
+    );
+    return rows.map(toCriteria);
   },
 
   async create(categoryId: string, data: CreateCriteria): Promise<Criteria> {
@@ -682,24 +712,30 @@ export const ScoreQueries = {
     candidateId: string,
     scores: { criteriaId: string; value: number }[]
   ): Promise<Score[]> {
-    const result: Score[] = [];
+    if (scores.length === 0) return [];
+
+    // Batch upsert: single INSERT ... ON DUPLICATE KEY UPDATE for all scores
+    const placeholders = scores.map(() => "(?, ?, ?, ?, ?)").join(", ");
+    const insertValues: unknown[] = [];
     for (const s of scores) {
-      const id = uuidv4();
-      // Upsert: insert or update if already exists
-      await execute(
-        `INSERT INTO scores (id, judge_id, candidate_id, criteria_id, value)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE value = ?, submitted_at = CURRENT_TIMESTAMP`,
-        [id, judgeId, candidateId, s.criteriaId, s.value, s.value]
-      );
-      // Fetch the actual saved score
-      const rows = await query(
-        "SELECT * FROM scores WHERE judge_id = ? AND candidate_id = ? AND criteria_id = ?",
-        [judgeId, candidateId, s.criteriaId]
-      );
-      if (rows.length > 0) result.push(toScore(rows[0]));
+      insertValues.push(uuidv4(), judgeId, candidateId, s.criteriaId, s.value);
     }
-    return result;
+
+    await execute(
+      `INSERT INTO scores (id, judge_id, candidate_id, criteria_id, value)
+       VALUES ${placeholders}
+       ON DUPLICATE KEY UPDATE value = VALUES(value), submitted_at = CURRENT_TIMESTAMP`,
+      insertValues
+    );
+
+    // Single SELECT to retrieve all saved scores
+    const criteriaIds = scores.map(s => s.criteriaId);
+    const selectPlaceholders = criteriaIds.map(() => "?").join(",");
+    const rows = await query(
+      `SELECT * FROM scores WHERE judge_id = ? AND candidate_id = ? AND criteria_id IN (${selectPlaceholders})`,
+      [judgeId, candidateId, ...criteriaIds]
+    );
+    return rows.map(toScore);
   },
 
   async override(

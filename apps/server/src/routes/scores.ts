@@ -29,9 +29,32 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
       return;
     }
 
-    // Validate each score against criteria rules and check if segment is locked
+    // Batch fetch all criteria in one query
+    const criteriaIds = scores.map((s: any) => s.criteriaId);
+    const allCriteria = await CriteriaQueries.getByIds(criteriaIds);
+
+    if (allCriteria.length !== criteriaIds.length) {
+      res.status(400).json({
+        success: false,
+        error: "One or more criteria IDs are invalid",
+      });
+      return;
+    }
+
+    // Batch lock check: single query for all criteria
+    const isLocked = await SegmentQueries.areCriteriaLocked(criteriaIds);
+    if (isLocked) {
+      res.status(403).json({
+        success: false,
+        error: "Segment is locked by controller. Scores cannot be submitted or altered.",
+      });
+      return;
+    }
+
+    // Validate score ranges using a Map lookup
+    const criteriaMap = new Map(allCriteria.map(c => [c.id, c]));
     for (const s of scores) {
-      const criteria = await CriteriaQueries.getById(s.criteriaId);
+      const criteria = criteriaMap.get(s.criteriaId);
       if (!criteria) {
         res.status(400).json({
           success: false,
@@ -39,16 +62,6 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
         });
         return;
       }
-
-      const isLocked = await SegmentQueries.isCriteriaLocked(s.criteriaId);
-      if (isLocked) {
-        res.status(403).json({
-          success: false,
-          error: "Segment is locked by controller. Scores cannot be submitted or altered.",
-        });
-        return;
-      }
-
       if (s.value < criteria.minScore || s.value > criteria.maxScore) {
         res.status(400).json({
           success: false,
@@ -64,9 +77,9 @@ scoreRoutes.post("/scores", requireJudge, async (req, res) => {
       scores
     );
 
+    // Single consolidated broadcast (removed duplicate score:update event)
     const io = req.app.get("io");
     if (io) {
-      io.emit("score:update", { candidateId });
       io.emit("scores:update", { candidateId });
     }
 
@@ -113,7 +126,6 @@ scoreRoutes.put("/scores/override", requireAdmin, async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.emit("score:update", { candidateId, judgeId, criteriaId });
       io.emit("scores:update", { candidateId, judgeId, criteriaId });
     }
 
@@ -147,7 +159,6 @@ const clearScoreHandler = async (req: Request, res: Response) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.emit("score:update", { candidateId, judgeId, categoryId });
       io.emit("scores:update", { candidateId, judgeId, categoryId });
     }
 

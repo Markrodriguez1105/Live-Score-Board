@@ -26,7 +26,7 @@ export function initDatabase(config: DbConfig): mysql.Pool {
     password: config.password,
     database: config.database,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 50,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,

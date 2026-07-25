@@ -46,6 +46,7 @@ export function ScoringPage() {
 
   const isInitialLoad = useRef(true);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Scored map (candidateId -> categoryId -> true)
   const [scoredMap, setScoredMap] = useState<Record<string, Record<string, boolean>>>({});
@@ -142,14 +143,21 @@ export function ScoringPage() {
     newSocket.on("segment:lock-update", () => fetchPageantData());
     newSocket.on("segment:hide-update", () => fetchPageantData());
 
-    const handleScoreUpdate = () => {
-      fetchPageantData();
+    // Debounced handler: coalesce rapid score broadcasts into a single refetch
+    const debouncedScoreUpdate = () => {
+      if (refetchDebounceRef.current) clearTimeout(refetchDebounceRef.current);
+      refetchDebounceRef.current = setTimeout(() => {
+        fetchPageantData();
+      }, 500);
     };
-    newSocket.on("score:update", handleScoreUpdate);
-    newSocket.on("scores:update", handleScoreUpdate);
-    newSocket.on("category:candidates-update", handleScoreUpdate);
+    newSocket.on("score:update", debouncedScoreUpdate);
+    newSocket.on("scores:update", debouncedScoreUpdate);
+    newSocket.on("category:candidates-update", debouncedScoreUpdate);
 
-    return () => { newSocket.close(); };
+    return () => {
+      if (refetchDebounceRef.current) clearTimeout(refetchDebounceRef.current);
+      newSocket.close();
+    };
   }, [token]);
 
   // Determine current segment & simultaneous mode
@@ -247,7 +255,8 @@ export function ScoringPage() {
             return updated;
           });
 
-          socket?.emit("judge:submit-score", { candidateId: selectedCandidateId, scores: payloadScores });
+          // Scores already saved via HTTP POST — do NOT re-submit via Socket.IO
+          // (removed duplicate socket.emit('judge:submit-score') to prevent double DB writes)
         } else {
           setSaveStatus("error");
         }
@@ -472,17 +481,15 @@ export function ScoringPage() {
                       <button
                         key={cat.id}
                         onClick={() => handleSelectCategory(cat.id)}
-                        className={`w-full p-2.5 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all flex flex-col gap-1 border ${
-                          isSelectedCategory
+                        className={`w-full p-2.5 rounded-xl text-xs font-bold text-left whitespace-nowrap transition-all flex flex-col gap-1 border ${isSelectedCategory
                             ? "bg-primary text-primary-foreground border-primary shadow-sm"
                             : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2 w-full">
                           <div className="flex items-center gap-1.5 truncate">
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                              isSelectedCategory ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
-                            }`}>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isSelectedCategory ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
+                              }`}>
                               #{idx + 1}
                             </span>
                             <span className="truncate">{cat.name} ({cat.weight}%)</span>
@@ -491,11 +498,10 @@ export function ScoringPage() {
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isActiveCategory && (
                               <span
-                                className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider ${
-                                  isSelectedCategory
+                                className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider ${isSelectedCategory
                                     ? "bg-white/20 text-white"
                                     : "bg-emerald-500/20 text-emerald-400"
-                                }`}
+                                  }`}
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
                                 ACTIVE
@@ -565,9 +571,8 @@ export function ScoringPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                              isSelected ? "bg-white/20 text-white" : isWalking ? "bg-green-500 text-white" : "bg-primary/20 text-primary"
-                            }`}>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${isSelected ? "bg-white/20 text-white" : isWalking ? "bg-green-500 text-white" : "bg-primary/20 text-primary"
+                              }`}>
                               #{c.candidateNumber}
                             </span>
                             <p className="text-xs font-bold truncate">{c.name}</p>
@@ -638,16 +643,16 @@ export function ScoringPage() {
                       selectedCandidate.region,
                       selectedCandidate.country
                     ].some(Boolean)) && (
-                      <p className="text-xs text-muted-foreground/80 mt-1">
-                        {[
-                          selectedCandidate.barangay,
-                          selectedCandidate.municipality,
-                          selectedCandidate.province,
-                          selectedCandidate.region,
-                          selectedCandidate.country
-                        ].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
+                        <p className="text-xs text-muted-foreground/80 mt-1">
+                          {[
+                            selectedCandidate.barangay,
+                            selectedCandidate.municipality,
+                            selectedCandidate.province,
+                            selectedCandidate.region,
+                            selectedCandidate.country
+                          ].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                     {isSimultaneousMode ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-400 mt-1 uppercase tracking-wider bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
                         ⚡ Simultaneous Scoring ({activeCategoriesInSelection.length} Categories)
@@ -663,7 +668,7 @@ export function ScoringPage() {
                 </div>
 
                 {/* Right Side: Total Score & Submit Button */}
-                <div className="flex flex-col items-stretch gap-2 shrink-0 min-w-[125px]">
+                <div className="flex flex-col items-stretch gap-2 shrink-0 min-w-31.25">
                   {/* Total Score Box */}
                   <div className="text-center bg-secondary/40 border border-border px-4 py-2 rounded-xl">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
@@ -679,17 +684,16 @@ export function ScoringPage() {
                     type="button"
                     onClick={() => performSave(scoreValues)}
                     disabled={saveStatus === "saving" || saveStatus === "idle" || isSegmentLocked}
-                    className={`w-full py-2.5 px-3 text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 ${
-                      saveStatus === "saving"
+                    className={`w-full py-2.5 px-3 text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 ${saveStatus === "saving"
                         ? "bg-indigo-950 text-indigo-400 border border-indigo-800/50 cursor-not-allowed"
                         : saveStatus === "saved"
-                        ? "bg-emerald-600/90 text-white border border-emerald-500/50 shadow-emerald-500/20"
-                        : saveStatus === "unsaved"
-                        ? "bg-amber-500 hover:bg-amber-600 text-white animate-pulse shadow-amber-500/30"
-                        : saveStatus === "error"
-                        ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse"
-                        : "bg-zinc-800/80 text-zinc-500 border border-zinc-700 cursor-not-allowed"
-                    }`}
+                          ? "bg-emerald-600/90 text-white border border-emerald-500/50 shadow-emerald-500/20"
+                          : saveStatus === "unsaved"
+                            ? "bg-amber-500 hover:bg-amber-600 text-white animate-pulse shadow-amber-500/30"
+                            : saveStatus === "error"
+                              ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse"
+                              : "bg-zinc-800/80 text-zinc-500 border border-zinc-700 cursor-not-allowed"
+                      }`}
                   >
                     {saveStatus === "saving" ? (
                       <>
@@ -872,8 +876,8 @@ export function ScoringPage() {
         <button
           onClick={handleRequestAssistance}
           className={`relative flex items-center justify-center w-12 h-12 rounded-full shadow-xl transition-all duration-300 active:scale-90 cursor-pointer ${assistancePopping
-              ? "bg-amber-400 text-slate-950 scale-125 shadow-amber-400/60 ring-4 ring-amber-300/60"
-              : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/30 hover:scale-110"
+            ? "bg-amber-400 text-slate-950 scale-125 shadow-amber-400/60 ring-4 ring-amber-300/60"
+            : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/30 hover:scale-110"
             }`}
           title="Call Assistance"
           aria-label="Call Assistance"
@@ -908,16 +912,16 @@ export function ScoringPage() {
                   lightboxData.region,
                   lightboxData.country
                 ].some(Boolean)) && (
-                  <p className="text-xs text-muted-foreground mt-1.5 font-medium">
-                    {[
-                      lightboxData.barangay,
-                      lightboxData.municipality,
-                      lightboxData.province,
-                      lightboxData.region,
-                      lightboxData.country
-                    ].filter(Boolean).join(" · ")}
-                  </p>
-                )}
+                    <p className="text-xs text-muted-foreground mt-1.5 font-medium">
+                      {[
+                        lightboxData.barangay,
+                        lightboxData.municipality,
+                        lightboxData.province,
+                        lightboxData.region,
+                        lightboxData.country
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
               </div>
             </div>
           )}

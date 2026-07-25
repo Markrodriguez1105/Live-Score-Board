@@ -60,20 +60,27 @@ export function setupSocketHandlers(io: PageantIO) {
 
         const decoded = jwt.verify(token, JWT_SECRET || "") as JudgeJwtPayload;
 
-        // Validate score values against criteria rules and check segment lock
+        // Batch validate: fetch all criteria in one query
+        const criteriaIds = payload.scores.map((s: { criteriaId: string }) => s.criteriaId);
+        const allCriteria = await CriteriaQueries.getByIds(criteriaIds);
+
+        if (allCriteria.length !== criteriaIds.length) {
+          console.warn("[Socket] One or more criteria IDs are invalid");
+          return;
+        }
+
+        // Batch lock check: single query for all criteria
+        const isLocked = await SegmentQueries.areCriteriaLocked(criteriaIds);
+        if (isLocked) {
+          console.warn("[Socket] Segment locked for criteria");
+          return;
+        }
+
+        // Validate score ranges using a Map lookup
+        const criteriaMap = new Map(allCriteria.map(c => [c.id, c]));
         for (const s of payload.scores) {
-          const criteria = await CriteriaQueries.getById(s.criteriaId);
-          if (!criteria) {
-            console.warn(`[Socket] Invalid criteria: ${s.criteriaId}`);
-            return;
-          }
-
-          const isLocked = await SegmentQueries.isCriteriaLocked(s.criteriaId);
-          if (isLocked) {
-            console.warn(`[Socket] Segment locked for criteria: ${s.criteriaId}`);
-            return;
-          }
-
+          const criteria = criteriaMap.get(s.criteriaId);
+          if (!criteria) return;
           if (s.value < criteria.minScore || s.value > criteria.maxScore) {
             console.warn(
               `[Socket] Score ${s.value} out of range [${criteria.minScore}, ${criteria.maxScore}]`
@@ -82,7 +89,7 @@ export function setupSocketHandlers(io: PageantIO) {
           }
         }
 
-        // Submit scores
+        // Submit scores (now batch INSERT)
         await ScoreQueries.submit(
           decoded.judgeId,
           payload.candidateId,
@@ -90,15 +97,9 @@ export function setupSocketHandlers(io: PageantIO) {
         );
 
         // Determine the categoryId from the first criteria
-        let categoryId = "";
-        if (payload.scores.length > 0) {
-          const firstCriteria = await CriteriaQueries.getById(
-            payload.scores[0].criteriaId
-          );
-          if (firstCriteria) categoryId = firstCriteria.categoryId;
-        }
+        const categoryId = allCriteria.length > 0 ? allCriteria[0].categoryId : "";
 
-        // Broadcast updated scores to all clients
+        // Single broadcast to all clients
         io.emit("scores:update", {
           candidateId: payload.candidateId,
           categoryId,

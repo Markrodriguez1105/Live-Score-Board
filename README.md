@@ -155,9 +155,8 @@ Mobile-first scoring interface for judges.
 git clone https://github.com/Markrodriguez1105/Live-Score-Board.git
 cd Live-Score-Board
 
-# 2. Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your preferred passwords and secrets
+# 2. Configure environment variables
+# Create a .env file with your preferred passwords and secrets (see Environment Variables below)
 
 # 3. Build and start all services
 docker compose up --build
@@ -242,7 +241,7 @@ docker compose restart server
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in the project root (use `.env.example` as a template):
+Create a `.env` file in the project root:
 
 ```env
 # Database

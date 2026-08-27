@@ -319,3 +319,7 @@ export interface CreateJudge {
   pin: string;
   judgeNumber?: number;
 }
+
+export function getActualScoreValue(_judgeNumber: number | undefined, rawScore: number, _maxScore: number): number {
+  return rawScore;
+}

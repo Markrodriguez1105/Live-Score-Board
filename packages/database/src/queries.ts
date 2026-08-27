@@ -26,6 +26,7 @@ import type {
   CategoryWithCandidates,
   SegmentWithCategories,
 } from "@pageant/types";
+import { getActualScoreValue } from "@pageant/types";
 
 // === Helpers ===
 
@@ -810,7 +811,14 @@ export const ScoreQueries = {
        ORDER BY seg.\`order\`, c.candidate_number, cat.\`order\`, cr.\`order\`, j.name`,
       [pageantId]
     );
-    return rows;
+    
+    // Inject actual_value based on Chairman 99% logic
+    return rows.map((row: RowDataPacket) => {
+      return {
+        ...row,
+        actual_value: getActualScoreValue(row.judge_number, Number(row.value), row.max_score),
+      };
+    });
   },
 
   /**
@@ -915,3 +923,6 @@ export const PresentationQueries = {
     return PresentationQueries.get(pageantId);
   },
 };
+
+
+

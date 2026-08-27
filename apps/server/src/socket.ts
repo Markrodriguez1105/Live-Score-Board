@@ -185,6 +185,7 @@ export function setupSocketHandlers(io: PageantIO) {
       }
     });
 
+
     // ── Tabulator: Override Score ─────────────────────────────
     socket.on("tabulator:override-score", async (payload) => {
       try {

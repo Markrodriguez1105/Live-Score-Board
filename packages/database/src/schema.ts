@@ -63,8 +63,8 @@ export async function initSchema(): Promise<void> {
         category_id VARCHAR(36) NOT NULL,
         name VARCHAR(255) NOT NULL,
         weight DECIMAL(5,2) NOT NULL DEFAULT 0,
-        min_score INT NOT NULL DEFAULT 1,
-        max_score INT NOT NULL DEFAULT 100,
+        min_score DECIMAL(5,2) NOT NULL DEFAULT 1,
+        max_score DECIMAL(5,2) NOT NULL DEFAULT 100,
         \`order\` INT NOT NULL DEFAULT 0,
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -118,6 +118,22 @@ export async function initSchema(): Promise<void> {
         FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE,
         FOREIGN KEY (criteria_id) REFERENCES criteria(id) ON DELETE CASCADE,
         UNIQUE KEY unique_score (judge_id, candidate_id, criteria_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Tie Breaker Decisions
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS tie_breaker_decisions (
+        id VARCHAR(36) PRIMARY KEY,
+        pageant_id VARCHAR(36) NOT NULL,
+        category_id VARCHAR(36) NOT NULL,
+        winner_candidate_id VARCHAR(36) NOT NULL,
+        tied_candidate_ids JSON NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pageant_id) REFERENCES pageants(id) ON DELETE CASCADE,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+        FOREIGN KEY (winner_candidate_id) REFERENCES candidates(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_tie_breaker (category_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 

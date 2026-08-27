@@ -491,6 +491,7 @@ export function CategoriesPage() {
                 <Input
                   id="crit-min-score"
                   type="number"
+                  step={0.5}
                   value={critForm.minScore}
                   onChange={(e) => setCritForm({ ...critForm, minScore: Number(e.target.value) })}
                   required
@@ -501,6 +502,7 @@ export function CategoriesPage() {
                 <Input
                   id="crit-max-score"
                   type="number"
+                  step={0.5}
                   value={critForm.maxScore}
                   onChange={(e) => setCritForm({ ...critForm, maxScore: Number(e.target.value) })}
                   required
@@ -547,6 +549,7 @@ export function CategoriesPage() {
                   <Input
                     id="edit-crit-min-score"
                     type="number"
+                    step={0.5}
                     value={editCriterionData.minScore}
                     onChange={(e) => setEditCriterionData({ ...editCriterionData, minScore: Number(e.target.value) })}
                     required
@@ -557,6 +560,7 @@ export function CategoriesPage() {
                   <Input
                     id="edit-crit-max-score"
                     type="number"
+                    step={0.5}
                     value={editCriterionData.maxScore}
                     onChange={(e) => setEditCriterionData({ ...editCriterionData, maxScore: Number(e.target.value) })}
                     required

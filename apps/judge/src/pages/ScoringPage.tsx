@@ -63,6 +63,7 @@ export function ScoringPage() {
 
   const token = sessionStorage.getItem("judgeToken");
   const judgeInfo = JSON.parse(sessionStorage.getItem("judgeInfo") || "null");
+  const isChairman = Number(judgeInfo?.judgeNumber) === 1;
 
   const [assistancePopping, setAssistancePopping] = useState(false);
 
@@ -675,7 +676,7 @@ export function ScoringPage() {
                       Total Score
                     </span>
                     <span className="text-3xl font-black font-mono text-primary">
-                      {activeCriteriaList.reduce((sum, c) => sum + (scoreValues[c.id] ?? c.minScore), 0)}
+                      {activeCriteriaList.reduce((sum, c) => sum + Number(scoreValues[c.id] ?? c.minScore), 0).toFixed(2)}
                     </span>
                   </div>
 
@@ -772,7 +773,7 @@ export function ScoringPage() {
               <div className="space-y-6">
                 {activeCategoriesInSelection.map((cat) => {
                   const catCriteria = cat.criteria || [];
-                  const catTotal = catCriteria.reduce((sum, c) => sum + (scoreValues[c.id] ?? c.minScore), 0);
+                  const catTotal = catCriteria.reduce((sum, c) => sum + Number(scoreValues[c.id] ?? c.minScore), 0).toFixed(2);
 
                   return (
                     <div key={cat.id} className="space-y-3 pb-4">
@@ -809,7 +810,7 @@ export function ScoringPage() {
                                 size="sm"
                                 onClick={() => {
                                   const currentVal = scoreValues[c.id] === undefined || isNaN(scoreValues[c.id]) ? c.minScore : scoreValues[c.id];
-                                  handleScoreChange(c.id, currentVal - 1, c.minScore, c.maxScore);
+                                  handleScoreChange(c.id, currentVal - 0.5, c.minScore, c.maxScore);
                                 }}
                                 disabled={isSegmentLocked || (scoreValues[c.id] === undefined || isNaN(scoreValues[c.id]) ? c.minScore : scoreValues[c.id]) <= c.minScore}
                                 className="h-8 w-8 text-xl font-bold shrink-0 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg disabled:opacity-30"
@@ -829,7 +830,7 @@ export function ScoringPage() {
                                 size="sm"
                                 onClick={() => {
                                   const currentVal = scoreValues[c.id] === undefined || isNaN(scoreValues[c.id]) ? c.minScore : scoreValues[c.id];
-                                  handleScoreChange(c.id, currentVal + 1, c.minScore, c.maxScore);
+                                  handleScoreChange(c.id, currentVal + 0.5, c.minScore, c.maxScore);
                                 }}
                                 disabled={isSegmentLocked || (scoreValues[c.id] === undefined || isNaN(scoreValues[c.id]) ? c.minScore : scoreValues[c.id]) >= c.maxScore}
                                 className="h-8 w-8 text-xl font-bold shrink-0 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg disabled:opacity-30"
@@ -839,16 +840,20 @@ export function ScoringPage() {
                             </div>
                           </div>
 
-                          <input
-                            type="range"
-                            min={c.minScore}
-                            max={c.maxScore}
-                            step={1}
+
+
+                          <div className="mt-3">
+                            <input
+                              type="range"
+                              min={c.minScore}
+                              max={c.maxScore}
+                            step={0.5}
                             disabled={isSegmentLocked}
                             value={scoreValues[c.id] === undefined || isNaN(scoreValues[c.id]) ? c.minScore : scoreValues[c.id]}
                             onChange={(e) => handleScoreChange(c.id, Number(e.target.value), c.minScore, c.maxScore)}
-                            className="w-full h-3 bg-secondary rounded-full appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
-                          />
+                              className="w-full h-3 bg-secondary rounded-full appearance-none cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -927,6 +932,7 @@ export function ScoringPage() {
           )}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

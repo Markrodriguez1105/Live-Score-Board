@@ -52,6 +52,7 @@ interface JudgeItem {
 interface RawScore {
   score_id: string;
   value: number;
+  actual_value?: number;
   judge_id: string;
   judge_name: string;
   candidate_id: string;
@@ -72,6 +73,7 @@ interface ResultData {
   candidates: CandidateItem[];
   categories: CategoryItem[];
   judges: JudgeItem[];
+
 }
 
 interface EditModalState {
@@ -185,7 +187,7 @@ export function ScoringDashboard() {
           (s) => s.candidate_id === candidateId && s.judge_id === j.id && s.criteria_id === cr.id
         );
         if (scoreRow) {
-          judgeTotal += Number(scoreRow.value);
+          judgeTotal += Number(scoreRow.actual_value ?? scoreRow.value);
           hasAnyScore = true;
         }
       }
@@ -218,7 +220,7 @@ export function ScoringDashboard() {
         (s) => s.candidate_id === candidate.id && s.judge_id === judge.id && s.criteria_id === cr.id
       );
       if (found) {
-        existingValues[cr.id] = Math.round(Number(found.value));
+        existingValues[cr.id] = Number(found.value);
       } else {
         existingValues[cr.id] = cr.minScore;
       }
@@ -248,7 +250,7 @@ export function ScoringDashboard() {
             judgeId: editModal.judge.id,
             candidateId: editModal.candidate.id,
             criteriaId,
-            value: Math.round(Number(val)),
+            value: Number(val),
           }),
         });
         if (res.status === 401) {
@@ -379,15 +381,39 @@ export function ScoringDashboard() {
             ? selectedCategory.candidates
             : (data?.candidates || []);
 
-          const rankedCategoryCandidates = categoryCandidates
-            .map((c) => {
-              const catTotal = calcCategoryAverageScore(c.id, selectedCategory);
-              return { ...c, catTotal };
-            })
-            .sort((a, b) => b.catTotal - a.catTotal)
-            .map((c, i) => ({ ...c, rank: i + 1 }));
+          const candidatesInCategory = categoryCandidates.map((c) => {
+            const catTotal = calcCategoryAverageScore(c.id, selectedCategory);
+            return { ...c, catTotal };
+          });
 
-          const displayCandidates = [...rankedCategoryCandidates].sort((a, b) => {
+          // Group by scores for ties
+          const scoreGroups = new Map<number, typeof candidatesInCategory>();
+          candidatesInCategory.forEach(c => {
+            const group = scoreGroups.get(c.catTotal) || [];
+            group.push(c);
+            scoreGroups.set(c.catTotal, group);
+          });
+
+          // Remove tie breakers and just use standard ranking
+          const rankedCategoryCandidates = [...candidatesInCategory].sort((a, b) => b.catTotal - a.catTotal).map((c, i) => {
+            return { ...c, rank: i + 1, tieStatus: 'none' };
+          });
+          
+          let currentRank = 1;
+          const sortedScores = Array.from(scoreGroups.keys()).sort((a, b) => b - a);
+          const finalRankedCandidates: any[] = [];
+          
+          for (const score of sortedScores) {
+            const group = scoreGroups.get(score)!;
+            group.forEach(c => {
+              finalRankedCandidates.push({ ...c, rank: currentRank, tieStatus: 'none' });
+            });
+            currentRank += group.length;
+          }
+          
+          const rankedCategoryCandidatesFinal = finalRankedCandidates;
+
+          const displayCandidates = [...rankedCategoryCandidatesFinal].sort((a, b) => {
             if (categorySortBy === "rank") {
               return a.rank - b.rank;
             }
@@ -483,32 +509,40 @@ export function ScoringDashboard() {
 
                             {/* Judge Score Cells */}
                             {data.judges.map((j) => {
-                              const judgeCriteriaScores = selectedCategory.criteria.map((cr) => {
+                              const judgeScores = selectedCategory.criteria.map((cr) => {
                                 const scoreRow = data.scores.find(
                                   (s) =>
                                     s.candidate_id === c.id &&
                                     s.judge_id === j.id &&
                                     s.criteria_id === cr.id
                                 );
-                                return scoreRow ? Number(scoreRow.value) : null;
+                                return scoreRow ? {
+                                  raw: Number(scoreRow.value),
+                                  actual: Number(scoreRow.actual_value ?? scoreRow.value)
+                                } : null;
                               });
 
-                              const isComplete = judgeCriteriaScores.every((s) => s !== null);
-                              const totalValue = isComplete
-                                ? judgeCriteriaScores.reduce((sum, val) => sum! + val!, 0)
-                                : 0;
+                              const isComplete = judgeScores.every((s) => s !== null);
+                              const rawTotal = isComplete ? judgeScores.reduce((sum, s) => sum + s!.raw, 0) : 0;
+                              const actualTotal = isComplete ? judgeScores.reduce((sum, s) => sum + s!.actual, 0) : 0;
+                              const isAdjusted = rawTotal !== actualTotal;
 
                               return (
                                 <td key={j.id} className="py-4 px-6 text-center">
                                   {isComplete ? (
                                     <button
                                       onClick={() => openEditModal(c, j, selectedCategory)}
-                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group"
+                                      className="inline-flex flex-col items-center gap-0.5 px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group relative"
                                       title="Click to edit score"
                                     >
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                      <span>{Math.round(totalValue)}</span>
-                                      <Edit3 className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      <div className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                        <span>{isAdjusted ? actualTotal.toFixed(2) : Number(rawTotal.toFixed(2))}</span>
+                                        <Edit3 className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity absolute right-1" />
+                                      </div>
+                                      {isAdjusted && (
+                                        <span className="text-[9px] text-emerald-400/70 line-through decoration-emerald-400/40">Raw: {Number(rawTotal.toFixed(2))}</span>
+                                      )}
                                     </button>
                                   ) : (
                                     <button
@@ -530,7 +564,7 @@ export function ScoringDashboard() {
                             </td>
 
                             {/* Plain Text Rank Cell (Last Column) */}
-                            <td className="py-4 px-6 text-center font-mono font-bold text-foreground text-sm">
+                            <td className="py-4 px-6 text-center font-mono font-bold text-foreground text-sm relative">
                               {c.rank}
                             </td>
                           </tr>
@@ -591,9 +625,10 @@ export function ScoringDashboard() {
                         </div>
                         <input
                           type="number"
+                          step={0.5}
                           min={cr.minScore}
                           max={cr.maxScore}
-                          value={val === undefined || isNaN(val) ? "" : Math.round(val)}
+                          value={val === undefined || isNaN(val) ? "" : val}
                           onChange={(e) => {
                             const raw = e.target.value === "" ? cr.minScore : Number(e.target.value);
                             const newScore = Math.min(cr.maxScore, Math.max(cr.minScore, raw));
@@ -614,8 +649,8 @@ export function ScoringDashboard() {
                         type="range"
                         min={cr.minScore}
                         max={cr.maxScore}
-                        step={1}
-                        value={Math.round(val)}
+                        step={0.5}
+                        value={val}
                         onChange={(e) => {
                           const newScore = Math.min(cr.maxScore, Math.max(cr.minScore, Number(e.target.value)));
                           setEditModal({

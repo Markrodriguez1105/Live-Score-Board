@@ -670,14 +670,21 @@ export function ScoringPage() {
 
                 {/* Right Side: Total Score & Submit Button */}
                 <div className="flex flex-col items-stretch gap-2 shrink-0 min-w-31.25">
-                  {/* Total Score Box */}
-                  <div className="text-center bg-secondary/40 border border-border px-4 py-2 rounded-xl">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                      Total Score
-                    </span>
-                    <span className="text-3xl font-black font-mono text-primary">
-                      {activeCriteriaList.reduce((sum, c) => sum + Number(scoreValues[c.id] ?? c.minScore), 0).toFixed(2)}
-                    </span>
+                  {/* Total Score Boxes */}
+                  <div className="flex gap-2">
+                    {activeCategoriesInSelection.map((cat) => {
+                      const catTotal = (cat.criteria || []).reduce((sum, c) => sum + Number(scoreValues[c.id] ?? c.minScore), 0).toFixed(2);
+                      return (
+                        <div key={cat.id} className="text-center bg-secondary/40 border border-border px-4 py-2 rounded-xl flex-1 min-w-[125px]">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block truncate max-w-[100px] mx-auto" title={cat.name}>
+                            {activeCategoriesInSelection.length > 1 ? cat.name : "Total Score"}
+                          </span>
+                          <span className="text-3xl font-black font-mono text-primary">
+                            {catTotal}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Submit Button (placed directly below the score box) */}

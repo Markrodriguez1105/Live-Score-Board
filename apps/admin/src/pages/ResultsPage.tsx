@@ -354,7 +354,7 @@ export function ResultsPage() {
         // Add per-category weighted scores
         for (const cat of segmentCategories) {
           const category_total_score = calcCategoryAverageScore(c.id, cat);
-          row[`${cat.name} (${cat.weight}%)`] = Math.round(category_total_score * (cat.weight / 100));
+          row[`${cat.name} (${cat.weight}%)`] = Number((category_total_score * (cat.weight / 100)).toFixed(2));
         }
         row["Final Weighted Score"] = c.total;
         return row;
@@ -398,11 +398,11 @@ export function ResultsPage() {
                 (s) => s.candidate_id === c.id && s.judge_id === j.id && s.criteria_id === cr.id
               );
               if (scoreRow) {
-                judgeTotal += Number(scoreRow.value);
+                judgeTotal += Number(scoreRow.actual_value ?? scoreRow.value);
                 hasAnyScore = true;
               }
             }
-            row[j.name] = hasAnyScore ? Math.round(judgeTotal) : "—";
+            row[j.name] = hasAnyScore ? Number(judgeTotal.toFixed(2)) : "—";
           }
 
           row["Average (Weighted)"] = c.catTotal;
